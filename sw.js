@@ -1,7 +1,7 @@
 // Turdle service worker: lets the installed app open offline.
 // Network-first for everything, so new daily puzzles and site updates always win;
 // the cache is only a fallback when offline. Bump CACHE to drop old caches.
-const CACHE = 'turdle-v1';
+const CACHE = 'turdle-v2';
 const PRECACHE = [
   './', 'index.html', 'css/styles.css', 'js/app.js', 'puzzles.txt', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png',

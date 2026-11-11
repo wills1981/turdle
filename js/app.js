@@ -460,7 +460,7 @@ function renderGrid() {
 
   gameState.history.forEach((word, idx) => {
     const type = word === gameState.targetWord && idx > 0 ? "target" : idx === 0 ? "start" : "history";
-    grid.appendChild(createRowElement(word, type, gameState.history[idx - 1]));
+    grid.appendChild(createRowElement(word, type));
   });
 
   if (!gameState.isGameOver) {
@@ -471,7 +471,7 @@ function renderGrid() {
   area.scrollTop = area.scrollHeight;
 }
 
-function createRowElement(wordStr, type, prevWord) {
+function createRowElement(wordStr, type) {
   const row = document.createElement('div');
   row.className = "flex gap-2 justify-center w-full" + (type === "active" ? "" : " animate-pop");
 
@@ -482,9 +482,9 @@ function createRowElement(wordStr, type, prevWord) {
 
     if (type === "target") {
       cls += " tile-target";
-    } else if (type === "history") {
-      // Highlight the letter that changed from the previous word
-      if (prevWord && prevWord[i] !== char) cls += " tile-changed";
+    } else if (type === "start" || type === "history") {
+      // Highlight letters already matching the target in the same position (progress)
+      if (char && char === gameState.targetWord[i]) cls += " tile-match";
     } else if (type === "active") {
       if (char) cls += " tile-typed";
       else cls += i === wordStr.length ? " tile-empty tile-cursor" : " tile-empty";
@@ -597,10 +597,13 @@ function buildShareText() {
   if (gameState.result === 'won') {
     const verdict = par === null ? '' : steps <= par ? ' ⛳ on par!' : ` (par ${par})`;
     lines.push(`Solved in ${steps} step${steps === 1 ? '' : 's'}${verdict}`);
-    // One square per step, no words, so it's spoiler-free
-    lines.push(Array.from({ length: steps }, (_, i) => (par !== null && i >= par ? '🟨' : '🟩')).join(''));
   } else {
     lines.push(`Gave up after ${steps} step${steps === 1 ? '' : 's'} 💩`);
+  }
+  // Spoiler-free path: one row per word, 🟩 where the letter already matches the target
+  const target = gameState.targetWord;
+  for (const word of gameState.history) {
+    lines.push([...word].map((c, i) => (c === target[i] ? '🟩' : '⬜')).join(''));
   }
   lines.push('', location.origin + location.pathname);
   return lines.join('\n');
