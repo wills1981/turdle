@@ -1,0 +1,60 @@
+# Turdle
+
+Daily word-ladder puzzle: change one letter at a time to get from the start word to the target word.
+Static site (`index.html`, `js/app.js`, `css/`) hosted on GitHub Pages from `main` / root, with no build step.
+Run it locally with `docker compose up`, then open http://localhost:8080 (source is bind-mounted, so refresh to see changes).
+
+## Layout
+- `puzzles.txt`: the daily puzzle schedule (see below). `js/app.js` picks today's line by UTC date.
+- `dictionaries/dictionary-N.txt`: every word accepted as a guess (SCOWL en_GB size ≤60).
+- `dictionaries/common-N.txt`: everyday words (SCOWL ≤35). The game's solver (`findRoute`) routes through
+  these for Par and Give Up, falling back to the full list only if needed.
+- `tools/build_dictionaries.py`: regenerates both dictionary tiers from SCOWL. `tools/blocklist.txt` lists slurs removed from both.
+- `tools/puzzles.py`: checks and generates `puzzles.txt`. **It holds the fairness rules; keep this file in sync with it.**
+- `tools/silly_words.txt`: the pool of silly start/target words the generator draws from.
+- `FEATURES` at the top of `js/app.js`: free play, hint and undo are currently switched off.
+- `project_generator.py` is stale (old tiny word lists, old README). Don't run it, as it would overwrite the project.
+
+## Populating puzzles.txt
+
+### Format
+```
+# Date (YYYY-MM-DD) | Start Word | Target Word
+2026-11-11|FIB|NOB
+```
+- One puzzle per day. Dates must be consecutive with no gaps or duplicates, in ascending order.
+- Words are UPPERCASE, the same length, 3–6 letters. Lines starting with `#` are comments.
+- A missing date falls back to a built-in schedule in `js/app.js`, so don't leave gaps.
+
+### Theme
+- Start and target words are silly and cheeky: toilet humour, body bits, smells, insults like GIT and NERD
+  (e.g. FART, PANTS, POOP, BUMS, BURPS, WILLY, SNOT).
+- Cheeky is fine; hateful is not. Never use anything in `tools/blocklist.txt` or any slur.
+- Mix word lengths randomly across 3–6 letters.
+- Start/target words only need to be in `dictionary-N.txt`; they don't need to be common.
+
+### Fairness rules (puzzles must not be so hard that players give up)
+Enforced by `tools/puzzles.py check`; the constants live at the top of that file.
+- **Par** (shortest route through common words): 4–5 for 3-letter puzzles, 4–6 for 4–6 letters.
+  Par 3 felt too easy; par 7+ makes players give up.
+- **At least 2 distinct shortest routes**, so one wrong turn isn't fatal.
+- **Route words must be everyday words**: the par route goes only through `common-N.txt`.
+  Words that only connect via obscure words (e.g. EGGS needs ERGS, BREATH is a near-island) are out.
+- **No repeats**: a start/target pair is used once, and each word appears at most twice in the file.
+- Aim for the middle: the generator weights par 4 and 5 over par 6.
+
+### Workflow
+1. Extend the schedule (`--append` keeps existing lines; `--from` must be the day after the last line):
+   ```bash
+   python3 tools/puzzles.py generate --from 2027-01-01 --to 2027-03-31 --append
+   ```
+   Or edit `puzzles.txt` by hand for themed days (e.g. Christmas).
+2. **Always validate before committing:**
+   ```bash
+   python3 tools/puzzles.py check
+   ```
+   It prints par, the number of routes and an example route for each day, and exits non-zero if any rule is broken.
+3. If the generator runs out of fair pairs, add words to `tools/silly_words.txt` and rerun.
+4. Don't change today's or past puzzles once they're live; players may have already played them.
+
+After rebuilding dictionaries (`python3 tools/build_dictionaries.py`), puzzles are rechecked automatically.

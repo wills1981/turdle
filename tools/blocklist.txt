@@ -1,0 +1,35 @@
+# Slurs removed from both word lists, so they never appear in Par, hint,
+# Give Up or free-play routes (and aren't accepted as guesses).
+# One word per line, case-insensitive. Rerun build_dictionaries.py after editing.
+CHINK
+CHINKS
+COON
+COONS
+DAGO
+DYKE
+DYKES
+FAG
+FAGS
+FAGGOT
+FAGGOTS
+GOOK
+GOOKS
+GYPPO
+KIKE
+KIKES
+NIGGER
+PAKI
+PAKIS
+RETARD
+RETARDS
+SPASTIC
+SPAZ
+SPIC
+SPICS
+TRANNY
+WOG
+WOGS
+WOP
+WOPS
+SLUT
+SLUTS

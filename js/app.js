@@ -1,4 +1,12 @@
 // Dynamic Game State & BFS Engine
+
+// Feature switches: flip to true to bring a feature back
+const FEATURES = {
+  freeplay: false, // Daily/Free Play toggle + Settings (free play & custom pairs)
+  hint: false,     // Hint button
+  undo: false      // Undo button
+};
+
 const EMBEDDED_WORDS = {
   3: ["CAT","DOG","COT","DOT","GOD","COG","LOG","BAG","BUG","BOG","BAT","BAR","BAD","BED","RED","RAT","RAM","RAG","RUN","SUN","FUN","FAN","FIN","PIN","PEN","PET","POT","POP","TOP","TIP","TAP","MAP","MAN","MAT","MAD","MUD","MUG","HUG","HOT","HAT","HIT","FIT","FAT","FAR","FOR","FOX","BOX","BOY","TOY","DAY","WAY","PAY","SAY","SEE","SEA","TEA","TEN","TAN","TIN","WIN","WET"],
   4: ["BEER","PEER","POOR","POOP","WARM","WARD","CARD","CORD","COLD","CATS","COTS","DOTS","DOGS","FLIP","FLOP","FLAP","FLAG","FLAT","SLAP","SLIP","SHIP","SHOP","SHOT","SHOE","FOOT","FOOD","FOLD","GOLD","GOLF","WOLF","TALK","WALK","WORK","WORD","WOOD","BOOT","BOAT","COAT","COAL","COOL","FOOL","FAIL","FALL","BALL","BELL","BELT","BEST","BEAT","BEAR","DEAR","DOOR","DEEP","KEEP","KING","RING","SING","SONG","LONG","LOVE","LIVE","LIKE","LAKE","MAKE","TAKE","TIME","TIDE","SIDE","SITE","SIZE","SAME","GAME","NAME"],
@@ -23,7 +31,9 @@ let gameState = {
   currentBuffer: "",
   parMoves: 0,
   optimalPaths: [],
-  validWords: new Set(),
+  result: null,            // 'won' | 'gaveup' once the puzzle ends
+  validWords: new Set(),   // every word accepted as a guess
+  commonWords: new Set(),  // everyday words: Par, hints, Give Up, free-play picks
   isGameOver: false,
   freeplayLength: 4
 };
@@ -38,12 +48,35 @@ let userStats = {
 
 // Application Initialization
 window.onload = async () => {
+  applyFeatureFlags();
   loadStats();
   buildKeyboardUI();
   setupEventListeners();
   await loadPuzzleMode('daily');
-  lucide.createIcons();
 };
+
+function applyFeatureFlags() {
+  const el = id => document.getElementById(id);
+  if (!FEATURES.freeplay) {
+    // Keep the "Daily" badge as a label, but make it inert
+    el('btn-mode-toggle').disabled = true;
+    el('btn-mode-toggle').style.opacity = '1';
+    el('btn-mode-toggle').style.cursor = 'default';
+    el('btn-settings').classList.add('hidden');
+  }
+  if (!FEATURES.hint) el('btn-hint').classList.add('hidden');
+  if (!FEATURES.undo) el('btn-undo').classList.add('hidden');
+}
+
+function updateStepCounter() {
+  const steps = gameState.history.length - 1;
+  const par = gameState.parMoves;
+  document.getElementById('step-counter').innerText = steps;
+  document.getElementById('step-par').innerText = par !== null && par !== undefined ? `/${par} steps` : 'steps';
+  const undo = document.getElementById('btn-undo');
+  if (undo) undo.disabled = steps === 0 || gameState.isGameOver;
+  document.getElementById('grid-hint').classList.toggle('hidden', steps > 0 || gameState.isGameOver);
+}
 
 function setupEventListeners() {
   document.getElementById('btn-mode-toggle').addEventListener('click', toggleGameMode);
@@ -57,6 +90,10 @@ function setupEventListeners() {
   document.getElementById('btn-hint').addEventListener('click', handleHint);
   document.getElementById('btn-giveup').addEventListener('click', handleGiveUp);
   document.getElementById('btn-share').addEventListener('click', handleShare);
+  document.getElementById('btn-share-whatsapp').addEventListener('click', handleShareWhatsApp);
+  document.getElementById('btn-copy').addEventListener('click', handleCopy);
+  // Native share sheet (WhatsApp, Messages, etc.) is mainly available on mobile
+  if (!navigator.share) document.getElementById('btn-share').classList.add('hidden');
   
   document.getElementById('btn-generate-freeplay').addEventListener('click', handleGenerateFreeplay);
   document.getElementById('btn-start-custom').addEventListener('click', handleStartCustom);
@@ -64,9 +101,9 @@ function setupEventListeners() {
   document.querySelectorAll('.btn-len-select').forEach(btn => {
     btn.addEventListener('click', (e) => {
       document.querySelectorAll('.btn-len-select').forEach(b => {
-        b.className = "btn-len-select p-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg border border-slate-700 text-slate-300";
+        b.className = "btn-len-select btn-3d btn-white h-10 text-sm";
       });
-      e.target.className = "btn-len-select p-2 bg-cyan-600 text-white text-xs font-bold rounded-lg border border-cyan-500";
+      e.target.className = "btn-len-select btn-3d btn-teal h-10 text-sm";
       gameState.freeplayLength = parseInt(e.target.dataset.len);
     });
   });
@@ -119,20 +156,29 @@ async function loadPuzzleMode(mode) {
   initGameSession();
 }
 
-async function loadDictionary(length) {
-  let wordArr = EMBEDDED_WORDS[length] || [];
+async function fetchWordList(path, length) {
   try {
-    const res = await fetch(`dictionaries/dictionary-${length}.txt`);
-    if (res.ok) {
-      const txt = await res.text();
-      const parsed = txt.split(/\r?\n/).map(w => w.trim().toUpperCase()).filter(w => w.length === length);
-      if (parsed.length > 0) wordArr = parsed;
-    }
+    const res = await fetch(path);
+    if (!res.ok) return [];
+    const txt = await res.text();
+    return txt.split(/\r?\n/).map(w => w.trim().toUpperCase()).filter(w => w.length === length);
   } catch (e) {
-    console.log(`Using fallback words for length ${length}`);
+    console.log(`Could not load ${path}`);
+    return [];
   }
+}
 
-  gameState.validWords = new Set(wordArr);
+async function loadDictionary(length) {
+  const fallback = EMBEDDED_WORDS[length] || [];
+  let [valid, common] = await Promise.all([
+    fetchWordList(`dictionaries/dictionary-${length}.txt`, length),
+    fetchWordList(`dictionaries/common-${length}.txt`, length)
+  ]);
+  if (valid.length === 0) valid = fallback;
+  if (common.length === 0) common = valid;
+
+  gameState.commonWords = new Set(common);
+  gameState.validWords = new Set([...valid, ...common]);
   gameState.validWords.add(gameState.startWord);
   gameState.validWords.add(gameState.targetWord);
 }
@@ -140,8 +186,10 @@ async function loadDictionary(length) {
 function initGameSession() {
   gameState.history = [gameState.startWord];
   gameState.currentBuffer = "";
+  gameState.isGameOver = false;
+  gameState.result = null;
   
-  const analysis = solveBFS(gameState.startWord, gameState.targetWord, gameState.validWords);
+  const analysis = findRoute(gameState.startWord, gameState.targetWord);
   gameState.parMoves = analysis.optimalSteps;
   gameState.optimalPaths = analysis.paths;
 
@@ -155,43 +203,61 @@ function initGameSession() {
 }
 
 // Graph Pathfinder Algorithm (BFS)
+// Neighbours are generated by swapping each letter A-Z and checking the Set, so cost
+// scales with word length rather than dictionary size. Returns one shortest path.
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
 function solveBFS(start, target, dictSet) {
   if (start === target) return { optimalSteps: 0, paths: [[start]] };
-  
-  let queue = [[start]];
-  let visited = new Set([start]);
-  let shortestLen = null;
-  let paths = [];
 
-  while (queue.length > 0) {
-    let levelSize = queue.length;
-    let levelVisited = new Set();
-
-    for (let i = 0; i < levelSize; i++) {
-      let path = queue.shift();
-      let curr = path[path.length - 1];
-
-      if (curr === target) {
-        if (shortestLen === null) shortestLen = path.length - 1;
-        if (path.length - 1 === shortestLen) paths.push(path);
-        continue;
+  const parent = new Map([[start, null]]);
+  const queue = [start];
+  for (let head = 0; head < queue.length; head++) {
+    const curr = queue[head];
+    for (let i = 0; i < curr.length; i++) {
+      for (const c of ALPHABET) {
+        if (c === curr[i]) continue;
+        const next = curr.slice(0, i) + c + curr.slice(i + 1);
+        if (parent.has(next) || (next !== target && !dictSet.has(next))) continue;
+        parent.set(next, curr);
+        if (next === target) {
+          const path = [next];
+          while (parent.get(path[path.length - 1])) path.push(parent.get(path[path.length - 1]));
+          path.reverse();
+          return { optimalSteps: path.length - 1, paths: [path] };
+        }
+        queue.push(next);
       }
+    }
+  }
+  return { optimalSteps: null, paths: [] };
+}
 
-      if (shortestLen !== null && path.length - 1 >= shortestLen) continue;
-
-      for (let word of dictSet) {
-        if (!visited.has(word) && isOneDiff(curr, word)) {
-          levelVisited.add(word);
-          queue.push([...path, word]);
+// Step distance from start to every word reachable through dictSet.
+function distancesFrom(start, dictSet) {
+  const dist = new Map([[start, 0]]);
+  const queue = [start];
+  for (let head = 0; head < queue.length; head++) {
+    const curr = queue[head];
+    for (let i = 0; i < curr.length; i++) {
+      for (const c of ALPHABET) {
+        const next = curr.slice(0, i) + c + curr.slice(i + 1);
+        if (!dist.has(next) && dictSet.has(next)) {
+          dist.set(next, dist.get(curr) + 1);
+          queue.push(next);
         }
       }
     }
-
-    for (let w of levelVisited) visited.add(w);
-    if (paths.length > 0) break;
   }
+  return dist;
+}
 
-  return { optimalSteps: shortestLen, paths };
+// Prefer routes through everyday words; fall back to the full list so puzzles with
+// obscure start/target words (or an obscure word the player has typed) still solve.
+function findRoute(from, target) {
+  const viaCommon = solveBFS(from, target, gameState.commonWords);
+  if (viaCommon.paths.length > 0) return viaCommon;
+  return solveBFS(from, target, gameState.validWords);
 }
 
 function isOneDiff(a, b) {
@@ -255,6 +321,9 @@ function submitWord() {
 
   if (word === gameState.targetWord) {
     gameState.isGameOver = true;
+    gameState.result = 'won';
+    updateStepCounter();
+    renderGrid();
     const playerSteps = gameState.history.length - 1;
     const diff = playerSteps - gameState.parMoves;
 
@@ -268,6 +337,7 @@ function submitWord() {
 }
 
 function handleUndo() {
+  if (!FEATURES.undo) return;
   if (gameState.history.length > 1 && !gameState.isGameOver) {
     gameState.history.pop();
     gameState.currentBuffer = "";
@@ -279,7 +349,7 @@ function handleUndo() {
 function handleHint() {
   if (gameState.isGameOver) return;
   const curr = gameState.history[gameState.history.length - 1];
-  const sol = solveBFS(curr, gameState.targetWord, gameState.validWords);
+  const sol = findRoute(curr, gameState.targetWord);
 
   if (sol.paths.length > 0 && sol.paths[0].length > 1) {
     const nextWord = sol.paths[0][1];
@@ -296,7 +366,11 @@ function handleGiveUp() {
     showToast(`Solution: ${path}`, "pop");
   }
   gameState.isGameOver = true;
+  gameState.result = 'gaveup';
   recordLoss();
+  updateStepCounter();
+  renderGrid();
+  setTimeout(() => { showModal('modal-stats'); updateStatsUI(); }, 2500);
 }
 
 // UI Rendering
@@ -305,41 +379,38 @@ function renderGrid() {
   grid.innerHTML = "";
 
   gameState.history.forEach((word, idx) => {
-    const isStart = idx === 0;
-    const isTarget = word === gameState.targetWord;
-    grid.appendChild(createRowElement(word, isStart ? "start" : isTarget ? "target" : "history"));
+    const type = word === gameState.targetWord && idx > 0 ? "target" : idx === 0 ? "start" : "history";
+    grid.appendChild(createRowElement(word, type, gameState.history[idx - 1]));
   });
 
   if (!gameState.isGameOver) {
-    const padded = gameState.currentBuffer.padEnd(gameState.wordLength, " ");
-    grid.appendChild(createRowElement(padded, "active"));
+    grid.appendChild(createRowElement(gameState.currentBuffer, "active"));
   }
 
   const area = document.getElementById('grid-scroll-area');
   area.scrollTop = area.scrollHeight;
 }
 
-function createRowElement(wordStr, type) {
+function createRowElement(wordStr, type, prevWord) {
   const row = document.createElement('div');
-  row.className = "flex space-x-1 sm:space-x-2 justify-center w-full animate-pop";
+  row.className = "flex gap-2 justify-center w-full" + (type === "active" ? "" : " animate-pop");
 
   for (let i = 0; i < gameState.wordLength; i++) {
     const char = wordStr[i] || "";
     const tile = document.createElement('div');
-    
-    let baseClass = "w-10 h-10 sm:w-12 sm:h-12 border-2 rounded-xl flex items-center justify-center font-mono font-bold text-lg sm:text-xl uppercase transition";
+    let cls = "tile";
 
-    if (type === "start") {
-      baseClass += " bg-slate-900 border-cyan-500/50 text-cyan-400";
-    } else if (type === "target") {
-      baseClass += " bg-emerald-950/60 border-emerald-500 text-emerald-400";
+    if (type === "target") {
+      cls += " tile-target";
     } else if (type === "history") {
-      baseClass += " bg-slate-900/90 border-slate-700 text-slate-200";
+      // Highlight the letter that changed from the previous word
+      if (prevWord && prevWord[i] !== char) cls += " tile-changed";
     } else if (type === "active") {
-      baseClass += char !== " " ? " bg-slate-800 border-cyan-400 text-white tile-glow" : " bg-slate-950/40 border-slate-800 text-transparent";
+      if (char) cls += " tile-typed";
+      else cls += i === wordStr.length ? " tile-empty tile-cursor" : " tile-empty";
     }
 
-    tile.className = baseClass;
+    tile.className = cls;
     tile.innerText = char;
     row.appendChild(tile);
   }
@@ -360,13 +431,15 @@ function buildKeyboardUI() {
     row.forEach(k => {
       const btn = document.createElement('button');
       if (k === 'ENTER') {
-        btn.className = "key-btn h-12 px-2.5 sm:px-3 bg-cyan-600 hover:bg-cyan-500 rounded text-xs font-bold text-white transition";
+        btn.className = "key-btn key-wide btn-3d btn-teal";
         btn.innerText = "SUBMIT";
       } else if (k === 'BACKSPACE') {
-        btn.className = "key-btn h-12 px-2.5 sm:px-3 bg-slate-800 hover:bg-slate-700 rounded text-xs font-bold text-slate-300 transition flex items-center justify-center";
-        btn.innerHTML = `<i data-lucide="delete" class="w-4 h-4"></i>`;
+        btn.className = "key-btn key-wide btn-3d btn-white text-xl";
+        btn.innerText = "⌫";
+        btn.setAttribute('aria-label', 'Delete letter');
+        btn.title = 'Delete letter';
       } else {
-        btn.className = "key-btn h-12 flex-1 max-w-[38px] bg-slate-800 hover:bg-slate-700 rounded text-sm sm:text-base font-bold text-slate-200 transition";
+        btn.className = "key-btn key-letter btn-3d btn-white";
         btn.innerText = k;
       }
       btn.addEventListener('click', () => handleKeyInput(k));
@@ -376,7 +449,13 @@ function buildKeyboardUI() {
 }
 
 function handlePhysicalKeyboard(e) {
-  if (e.key === 'Backspace') handleKeyInput('BACKSPACE');
+  // Leave shortcuts (Cmd/Ctrl+R etc.) and typing in form fields alone
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target.closest('input, textarea, select')) return;
+  // Stop Enter/Space from also "clicking" whichever on-screen key last had focus
+  if (e.key === 'Enter' || e.key === ' ' || e.key === 'Backspace') e.preventDefault();
+
+  if (e.key === 'Backspace' || e.key === 'Delete') handleKeyInput('BACKSPACE');
   else if (e.key === 'Enter') handleKeyInput('ENTER');
   else if (/^[a-zA-Z]$/.test(e.key)) handleKeyInput(e.key.toUpperCase());
 }
@@ -385,14 +464,14 @@ function handlePhysicalKeyboard(e) {
 function showToast(msg, anim = "") {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
-  toast.className = `px-4 py-2 bg-slate-800 border border-slate-700 text-cyan-300 font-semibold text-xs rounded-xl shadow-2xl transition animate-${anim}`;
+  toast.className = `pill px-4 py-2 font-bold text-sm shadow-lg whitespace-nowrap ${anim ? 'animate-' + anim : ''}`;
   toast.innerText = msg;
   container.appendChild(toast);
   setTimeout(() => toast.remove(), 2500);
 }
 
 function showModal(id) { document.getElementById(id).classList.remove('hidden'); }
-function hideModals() { document.querySelectorAll('.fixed').forEach(m => m.classList.add('hidden')); }
+function hideModals() { document.querySelectorAll('[id^="modal-"]').forEach(m => m.classList.add('hidden')); }
 
 function loadStats() {
   const saved = localStorage.getItem('word_ladder_stats');
@@ -428,17 +507,59 @@ function updateStatsUI() {
   document.getElementById('stat-maxstreak').innerText = userStats.maxStreak;
 }
 
-function handleShare() {
+function buildShareText() {
   const steps = gameState.history.length - 1;
-  const text = `Word Ladder (${gameState.mode})\n${gameState.startWord} ➔ ${gameState.targetWord}\nSolved in ${steps} steps (Par: ${gameState.parMoves})!\n\nPlay online!`;
-  
-  const textarea = document.createElement('textarea');
-  textarea.value = text;
-  document.body.appendChild(textarea);
-  textarea.select();
-  document.execCommand('copy');
-  document.body.removeChild(textarea);
-  
+  const par = gameState.parMoves;
+  const label = gameState.mode === 'daily'
+    ? (document.getElementById('puzzle-date-badge').innerText.match(/\d{4}-\d{2}-\d{2}/) || [''])[0]
+    : 'Free Play';
+  const lines = [`Turdle 💩 ${label}`.trim(), `${gameState.startWord} ➔ ${gameState.targetWord}`];
+  if (gameState.result === 'won') {
+    const verdict = par === null ? '' : steps <= par ? ' ⛳ on par!' : ` (par ${par})`;
+    lines.push(`Solved in ${steps} step${steps === 1 ? '' : 's'}${verdict}`);
+    // One square per step, no words, so it's spoiler-free
+    lines.push(Array.from({ length: steps }, (_, i) => (par !== null && i >= par ? '🟨' : '🟩')).join(''));
+  } else {
+    lines.push(`Gave up after ${steps} step${steps === 1 ? '' : 's'} 💩`);
+  }
+  lines.push('', location.origin + location.pathname);
+  return lines.join('\n');
+}
+
+function canShare() {
+  if (gameState.result) return true;
+  showToast("Finish today's puzzle to share!", "shake");
+  return false;
+}
+
+async function handleShare() {
+  if (!canShare()) return;
+  try {
+    await navigator.share({ text: buildShareText() });
+  } catch (e) {
+    if (e.name !== 'AbortError') handleCopy();
+  }
+}
+
+function handleShareWhatsApp() {
+  if (!canShare()) return;
+  window.open(`https://wa.me/?text=${encodeURIComponent(buildShareText())}`, '_blank', 'noopener');
+}
+
+async function handleCopy() {
+  if (!canShare()) return;
+  const text = buildShareText();
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (e) {
+    // Fallback for older browsers / non-secure contexts
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  }
   showToast("Results copied to clipboard!", "pop");
 }
 
@@ -448,18 +569,23 @@ async function handleGenerateFreeplay() {
   gameState.wordLength = gameState.freeplayLength;
   await loadDictionary(gameState.wordLength);
 
-  const arr = Array.from(gameState.validWords);
-  let s = arr[Math.floor(Math.random() * arr.length)];
-  let t = arr[Math.floor(Math.random() * arr.length)];
-
-  let sol = solveBFS(s, t, gameState.validWords);
-  let tries = 0;
-  while ((!sol.optimalSteps || sol.optimalSteps < 2) && tries < 50) {
-    s = arr[Math.floor(Math.random() * arr.length)];
-    t = arr[Math.floor(Math.random() * arr.length)];
-    sol = solveBFS(s, t, gameState.validWords);
-    tries++;
+  // Pick an everyday start word, then a target 3-8 steps away (or the furthest reachable)
+  const pool = gameState.commonWords.size ? gameState.commonWords : gameState.validWords;
+  const arr = Array.from(pool);
+  let s, t;
+  for (let tries = 0; tries < 20; tries++) {
+    const a = arr[Math.floor(Math.random() * arr.length)];
+    const dist = distancesFrom(a, pool);
+    const ideal = [...dist].filter(([, d]) => d >= 3 && d <= 8).map(([w]) => w);
+    const fallback = [...dist].filter(([, d]) => d >= 2).map(([w]) => w);
+    const choices = ideal.length ? ideal : fallback;
+    if (choices.length) {
+      s = a;
+      t = choices[Math.floor(Math.random() * choices.length)];
+      if (ideal.length) break;
+    }
   }
+  if (!s) { s = arr[0]; t = arr[arr.length - 1]; }
 
   gameState.startWord = s;
   gameState.targetWord = t;
@@ -491,6 +617,7 @@ async function handleStartCustom() {
 }
 
 function toggleGameMode() {
+  if (!FEATURES.freeplay) return;
   if (gameState.mode === 'daily') {
     handleGenerateFreeplay();
   } else {

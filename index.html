@@ -1,280 +1,196 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Word Ladder - Daily Puzzle Game</title>
-  
-  <!-- Tailwind CSS via CDN -->
+  <title>Turdle! - Daily Puzzle Game</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💩</text></svg>">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS via CDN (layout utilities) -->
   <script src="https://cdn.tailwindcss.com"></script>
-  
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  
-  <!-- Custom Stylesheet -->
+
+  <!-- Custom Stylesheet (theme) -->
   <link rel="stylesheet" href="css/styles.css">
-  
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              50: '#f0f9ff',
-              400: '#38bdf8',
-              500: '#06b6d4',
-              600: '#0891b2',
-              900: '#0f172a',
-            }
-          },
-          animation: {
-            'pop': 'pop 0.15s ease-in-out',
-            'shake': 'shake 0.4s ease-in-out',
-            'bounce-short': 'bounce 0.5s ease-in-out 2'
-          },
-          keyframes: {
-            pop: {
-              '0%': { transform: 'scale(0.95)' },
-              '50%': { transform: 'scale(1.05)' },
-              '100%': { transform: 'scale(1)' },
-            },
-            shake: {
-              '0%, 100%': { transform: 'translateX(0)' },
-              '20%, 60%': { transform: 'translateX(-6px)' },
-              '40%, 80%': { transform: 'translateX(6px)' },
-            }
-          }
-        }
-      }
-    };
-  </script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-cyan-500 selection:text-white">
+<body class="min-h-screen flex flex-col antialiased">
 
-  <!-- Header Navigation -->
-  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-40">
-    <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 font-black text-xl text-white">
-          W
-        </div>
-        <div>
-          <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">LADDER</h1>
-          <p class="text-[10px] text-slate-400 font-medium tracking-widest uppercase">Word Shift Puzzle</p>
-        </div>
+  <!-- Header -->
+  <header class="w-full">
+    <!-- Grid: logo spans both rows; subtitle runs under title + buttons so it never squashes on phones -->
+    <div class="max-w-xl mx-auto px-4 pt-4 grid items-center gap-x-3 gap-y-1" style="grid-template-columns: auto 1fr auto;">
+      <div class="row-span-2 w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-md" style="background: linear-gradient(145deg,#f4a259,#c8541f); box-shadow: 0 4px 0 #9c3f14;">💩</div>
+      <div class="flex items-center gap-2 min-w-0">
+        <h1 class="font-display text-3xl font-bold leading-none" style="color: var(--ink)">Turdle!</h1>
+        <span class="pill font-display text-[11px] font-semibold px-2 py-0.5">v2.0</span>
       </div>
 
-      <!-- Header Controls -->
-      <div class="flex items-center space-x-1 sm:space-x-2">
-        <button id="btn-mode-toggle" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 transition flex items-center space-x-1.5">
-          <i data-lucide="zap" class="w-3.5 h-3.5"></i>
-          <span id="mode-label">Daily</span>
+      <div class="flex items-center gap-2 justify-self-end">
+        <button id="btn-mode-toggle" class="btn-3d btn-green px-3 h-10 text-sm flex items-center gap-1.5">
+          <span aria-hidden="true">📅</span><span id="mode-label">Daily</span>
         </button>
-
-        <button id="btn-help" class="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition" title="How to Play">
-          <i data-lucide="help-circle" class="w-5 h-5"></i>
-        </button>
-        <button id="btn-stats" class="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition" title="Statistics">
-          <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
-        </button>
-        <button id="btn-settings" class="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition" title="Settings & Free Play">
-          <i data-lucide="settings" class="w-5 h-5"></i>
-        </button>
+        <button id="btn-stats" class="btn-3d btn-yellow w-10 h-10 text-base" title="Statistics" aria-label="Statistics">📊</button>
+        <button id="btn-help" class="btn-3d btn-yellow w-10 h-10 text-base font-bold" title="How to play" aria-label="How to play">?</button>
+        <button id="btn-settings" class="btn-3d btn-yellow w-10 h-10 text-base" title="Settings & Free Play" aria-label="Settings">⚙️</button>
       </div>
+      <p class="col-span-2 text-[10px] sm:text-[11px] font-bold tracking-wide uppercase leading-tight" style="color: var(--rust)">Word shift puzzle by Rob Wills (kinda!)</p>
     </div>
   </header>
 
-  <!-- Main Game Container -->
-  <main class="flex-1 max-w-xl w-full mx-auto p-4 flex flex-col justify-between items-center">
-    
-    <!-- Target Header Info -->
-    <div class="w-full text-center my-2">
-      <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-400 mb-2">
-        <span id="puzzle-date-badge">Today's Ladder</span>
-        <span>•</span>
-        <span id="word-len-badge">4 Letters</span>
-        <span>•</span>
-        <span id="par-badge" class="text-cyan-400 font-semibold">Par: --</span>
+  <!-- Main Game -->
+  <main class="flex-1 max-w-xl w-full mx-auto px-4 pb-4 flex flex-col items-center">
+
+    <!-- Puzzle info pill -->
+    <div class="pill mt-3 px-4 py-1.5 text-sm font-bold flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full" style="background: var(--green)"></span>
+      <span id="puzzle-date-badge">Today's Ladder</span><span>•</span>
+      <span id="word-len-badge">4 Letters</span><span>•</span>
+      <span id="par-badge">Par: --</span>
+    </div>
+
+    <!-- Start / progress / target card -->
+    <div class="card relative overflow-hidden w-full mt-3 px-5 py-4 flex items-center justify-between">
+      <div class="absolute -top-8 -right-8 w-20 h-20 rounded-full" style="background: var(--green-soft)"></div>
+      <div class="text-center relative">
+        <div class="text-[11px] font-extrabold uppercase tracking-widest mb-1.5" style="color: var(--ink-soft)">Start</div>
+        <div id="start-word-display" class="word-chip chip-start text-2xl sm:text-3xl">----</div>
       </div>
-
-      <!-- Target Words Banner -->
-      <div class="flex items-center justify-center space-x-4 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
-        <div class="text-center">
-          <div class="text-[10px] uppercase tracking-wider text-slate-400 mb-1">Start</div>
-          <div id="start-word-display" class="text-2xl sm:text-3xl font-black text-cyan-400 tracking-widest font-mono">----</div>
+      <div class="text-center relative">
+        <div class="flex items-baseline justify-center gap-1">
+          <span id="step-counter" class="font-display text-4xl font-bold leading-none" style="color: var(--ink)">0</span>
+          <span id="step-par" class="text-sm font-bold" style="color: var(--ink-soft)">steps</span>
         </div>
-
-        <div class="flex flex-col items-center px-2">
-          <i data-lucide="arrow-right" class="w-6 h-6 text-slate-500"></i>
-          <span id="step-counter" class="text-xs font-bold text-slate-400 mt-1">0 steps</span>
-        </div>
-
-        <div class="text-center">
-          <div class="text-[10px] uppercase tracking-wider text-slate-400 mb-1">Target</div>
-          <div id="target-word-display" class="text-2xl sm:text-3xl font-black text-emerald-400 tracking-widest font-mono">----</div>
-        </div>
+        <div class="text-[10px] font-extrabold uppercase tracking-widest mt-1" style="color: var(--ink-soft)">Progress</div>
+      </div>
+      <div class="text-center relative">
+        <div class="text-[11px] font-extrabold uppercase tracking-widest mb-1.5" style="color: var(--ink-soft)">Target</div>
+        <div id="target-word-display" class="word-chip chip-target text-2xl sm:text-3xl">----</div>
       </div>
     </div>
 
-    <!-- Toast Notification Container -->
-    <div id="toast-container" class="fixed top-20 z-50 left-1/2 -translate-x-1/2 pointer-events-none flex flex-col items-center space-y-2"></div>
+    <!-- Toasts -->
+    <div id="toast-container" class="fixed top-24 z-50 left-1/2 -translate-x-1/2 pointer-events-none flex flex-col items-center gap-2"></div>
 
-    <!-- Word Grid Container -->
-    <div id="grid-scroll-area" class="w-full flex-1 flex flex-col items-center justify-start my-3 overflow-y-auto max-h-[380px] space-y-2 pr-1">
-      <div id="ladder-grid" class="flex flex-col items-center space-y-2 w-full">
-        <!-- Dynamic Word Rows Injected Here -->
-      </div>
+    <!-- Ladder -->
+    <div id="grid-scroll-area" class="w-full flex-1 flex flex-col items-center my-4 overflow-y-auto max-h-[360px] min-h-[140px] px-1">
+      <div id="ladder-grid" class="flex flex-col items-center gap-2.5 w-full pt-1 pb-2"></div>
+      <div id="grid-hint" class="pill mt-2 px-4 py-1.5 text-sm font-bold">Change 1 letter to shift the word!</div>
     </div>
 
-    <!-- In-Game Action Bar -->
-    <div id="game-controls" class="w-full flex items-center justify-between px-2 mb-3">
-      <button id="btn-undo" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg flex items-center space-x-1 transition disabled:opacity-40">
-        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-        <span>Undo</span>
-      </button>
-
-      <div class="flex items-center space-x-2">
-        <button id="btn-hint" class="px-3 py-1.5 text-xs font-medium bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg flex items-center space-x-1 transition">
-          <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i>
-          <span>Hint</span>
-        </button>
-        <button id="btn-giveup" class="px-3 py-1.5 text-xs font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg flex items-center space-x-1 transition">
-          <i data-lucide="flag" class="w-3.5 h-3.5"></i>
-          <span>Give Up</span>
-        </button>
-      </div>
+    <!-- Action bar -->
+    <div id="game-controls" class="w-full max-w-md flex items-stretch gap-2 mb-3">
+      <button id="btn-undo" class="btn-3d btn-slate flex-1 h-11 text-sm flex items-center justify-center gap-1.5"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Undo</button>
+      <button id="btn-hint" class="btn-3d btn-yellow flex-1 h-11 text-sm flex items-center justify-center gap-1.5"><span aria-hidden="true">💡</span>Hint</button>
+      <button id="btn-giveup" class="btn-3d btn-pink flex-1 h-11 text-sm flex items-center justify-center gap-1.5"><span aria-hidden="true">🏳️</span>Give Up</button>
     </div>
 
-    <!-- On-Screen Virtual Keyboard -->
+    <!-- On-screen keyboard -->
     <div id="keyboard" class="w-full max-w-md select-none">
-      <div id="kbd-row-1" class="flex justify-center space-x-1 mb-1.5"></div>
-      <div id="kbd-row-2" class="flex justify-center space-x-1 mb-1.5"></div>
-      <div id="kbd-row-3" class="flex justify-center space-x-1"></div>
+      <div id="kbd-row-1" class="flex justify-center gap-1.5 mb-2"></div>
+      <div id="kbd-row-2" class="flex justify-center gap-1.5 mb-2 px-4"></div>
+      <div id="kbd-row-3" class="flex justify-center gap-1.5"></div>
     </div>
   </main>
 
   <!-- MODAL: How To Play -->
-  <div id="modal-help" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-      <button class="modal-close absolute top-4 right-4 text-slate-400 hover:text-white">
-        <i data-lucide="x" class="w-5 h-5"></i>
-      </button>
-      <h3 class="text-xl font-bold text-slate-100 mb-3 flex items-center space-x-2">
-        <i data-lucide="help-circle" class="w-5 h-5 text-cyan-400"></i>
-        <span>How to Play</span>
-      </h3>
-      <div class="text-sm text-slate-300 space-y-3 leading-relaxed">
-        <p>Change the <strong>Start Word</strong> into the <strong>Target Word</strong> by altering <strong>exactly one letter</strong> at a time.</p>
-        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-          <div class="flex items-center space-x-2 font-mono font-bold text-sm">
-            <span class="px-2 py-1 bg-slate-800 text-slate-400 rounded">C A T S</span>
-            <i data-lucide="arrow-right" class="w-4 h-4 text-slate-600"></i>
-            <span class="px-2 py-1 bg-slate-800 text-cyan-400 rounded">C O T S</span>
-          </div>
-          <div class="flex items-center space-x-2 font-mono font-bold text-sm">
-            <span class="px-2 py-1 bg-slate-800 text-cyan-400 rounded">C O T S</span>
-            <i data-lucide="arrow-right" class="w-4 h-4 text-slate-600"></i>
-            <span class="px-2 py-1 bg-slate-800 text-emerald-400 rounded">D O T S</span>
-          </div>
+  <div id="modal-help" class="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="modal-card max-w-md w-full p-6 relative">
+      <button class="modal-close btn-3d btn-white absolute top-4 right-4 w-9 h-9 text-sm" aria-label="Close">✕</button>
+      <h3 class="font-display text-2xl font-bold mb-3">How to play</h3>
+      <div class="text-sm space-y-3 leading-relaxed" style="color: var(--ink)">
+        <p>Turn the <strong>start word</strong> into the <strong>target word</strong> by changing <strong>exactly one letter</strong> at a time.</p>
+        <div class="stat-box p-3 space-y-2 font-display font-semibold">
+          <div class="flex items-center gap-2"><span class="word-chip chip-start text-sm">CATS</span><span>→</span><span class="word-chip chip-start text-sm">COTS</span></div>
+          <div class="flex items-center gap-2"><span class="word-chip chip-start text-sm">COTS</span><span>→</span><span class="word-chip chip-target text-sm">DOTS</span></div>
         </div>
-        <ul class="list-disc list-inside space-y-1 text-slate-400 text-xs">
-          <li>Every step must be a valid English word.</li>
-          <li>Solve the ladder in as few steps as possible!</li>
+        <ul class="list-disc list-inside space-y-1 text-xs" style="color: var(--ink-soft)">
+          <li>Every step must be a real English word.</li>
+          <li>Try to match par: the fewest steps possible.</li>
+          <li>A new silly puzzle every day!</li>
         </ul>
       </div>
-      <button class="modal-close mt-5 w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-sm transition">Got it!</button>
+      <button class="modal-close btn-3d btn-teal mt-5 w-full h-11 text-base">Got it!</button>
     </div>
   </div>
 
-  <!-- MODAL: Stats -->
-  <div id="modal-stats" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-      <button class="modal-close absolute top-4 right-4 text-slate-400 hover:text-white">
-        <i data-lucide="x" class="w-5 h-5"></i>
-      </button>
-      <h3 class="text-xl font-bold text-slate-100 mb-4 flex items-center space-x-2">
-        <i data-lucide="bar-chart-2" class="w-5 h-5 text-cyan-400"></i>
-        <span>Statistics</span>
-      </h3>
-      
+  <!-- MODAL: Stats & Share -->
+  <div id="modal-stats" class="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="modal-card max-w-md w-full p-6 relative">
+      <button class="modal-close btn-3d btn-white absolute top-4 right-4 w-9 h-9 text-sm" aria-label="Close">✕</button>
+      <h3 class="font-display text-2xl font-bold mb-4">Statistics</h3>
+
       <div class="grid grid-cols-4 gap-2 mb-5 text-center">
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-          <div id="stat-played" class="text-xl font-black text-slate-100">0</div>
-          <div class="text-[10px] text-slate-400 font-medium uppercase">Played</div>
+        <div class="stat-box p-2.5">
+          <div id="stat-played" class="font-display text-2xl font-bold">0</div>
+          <div class="text-[10px] font-extrabold uppercase" style="color: var(--ink-soft)">Played</div>
         </div>
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-          <div id="stat-winrate" class="text-xl font-black text-slate-100">0%</div>
-          <div class="text-[10px] text-slate-400 font-medium uppercase">Win %</div>
+        <div class="stat-box p-2.5">
+          <div id="stat-winrate" class="font-display text-2xl font-bold">0%</div>
+          <div class="text-[10px] font-extrabold uppercase" style="color: var(--ink-soft)">Win %</div>
         </div>
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-          <div id="stat-streak" class="text-xl font-black text-cyan-400">0</div>
-          <div class="text-[10px] text-slate-400 font-medium uppercase">Current</div>
+        <div class="stat-box p-2.5">
+          <div id="stat-streak" class="font-display text-2xl font-bold" style="color: var(--teal)">0</div>
+          <div class="text-[10px] font-extrabold uppercase" style="color: var(--ink-soft)">Streak</div>
         </div>
-        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-          <div id="stat-maxstreak" class="text-xl font-black text-emerald-400">0</div>
-          <div class="text-[10px] text-slate-400 font-medium uppercase">Max Streak</div>
+        <div class="stat-box p-2.5">
+          <div id="stat-maxstreak" class="font-display text-2xl font-bold" style="color: var(--green)">0</div>
+          <div class="text-[10px] font-extrabold uppercase" style="color: var(--ink-soft)">Best</div>
         </div>
       </div>
 
-      <button id="btn-share" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm transition flex items-center justify-center space-x-2">
-        <i data-lucide="share-2" class="w-4 h-4"></i>
-        <span>Share Results</span>
-      </button>
+      <div class="space-y-2">
+        <button id="btn-share" class="btn-3d btn-teal w-full h-12 text-base flex items-center justify-center gap-2"><span aria-hidden="true">📤</span>Share Results</button>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btn-share-whatsapp" class="btn-3d btn-whatsapp h-11 text-sm flex items-center justify-center gap-2"><span aria-hidden="true">💬</span>WhatsApp</button>
+          <button id="btn-copy" class="btn-3d btn-white h-11 text-sm flex items-center justify-center gap-2"><span aria-hidden="true">📋</span>Copy</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- MODAL: Settings & Free Play -->
-  <div id="modal-settings" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-      <button class="modal-close absolute top-4 right-4 text-slate-400 hover:text-white">
-        <i data-lucide="x" class="w-5 h-5"></i>
-      </button>
-      <h3 class="text-xl font-bold text-slate-100 mb-4 flex items-center space-x-2">
-        <i data-lucide="settings" class="w-5 h-5 text-cyan-400"></i>
-        <span>Settings & Freeplay</span>
-      </h3>
+  <!-- MODAL: Settings & Free Play (hidden while FEATURES.freeplay is false) -->
+  <div id="modal-settings" class="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="modal-card max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
+      <button class="modal-close btn-3d btn-white absolute top-4 right-4 w-9 h-9 text-sm" aria-label="Close">✕</button>
+      <h3 class="font-display text-2xl font-bold mb-4">Free Play</h3>
 
       <div class="space-y-4">
-        <!-- Free Play Generator -->
-        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-400">Free Play Generator</h4>
+        <div class="stat-box p-4 space-y-3">
+          <h4 class="text-xs font-extrabold uppercase tracking-wider" style="color: var(--teal)">Random puzzle</h4>
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Select Word Length</label>
+            <label class="block text-xs font-bold mb-1" style="color: var(--ink-soft)">Word length</label>
             <div class="grid grid-cols-4 gap-2">
-              <button data-len="3" class="btn-len-select p-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg border border-slate-700 text-slate-300">3</button>
-              <button data-len="4" class="btn-len-select p-2 bg-cyan-600 text-white text-xs font-bold rounded-lg border border-cyan-500">4</button>
-              <button data-len="5" class="btn-len-select p-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg border border-slate-700 text-slate-300">5</button>
-              <button data-len="6" class="btn-len-select p-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg border border-slate-700 text-slate-300">6</button>
+              <button data-len="3" class="btn-len-select btn-3d btn-white h-10 text-sm">3</button>
+              <button data-len="4" class="btn-len-select btn-3d btn-teal h-10 text-sm">4</button>
+              <button data-len="5" class="btn-len-select btn-3d btn-white h-10 text-sm">5</button>
+              <button data-len="6" class="btn-len-select btn-3d btn-white h-10 text-sm">6</button>
             </div>
           </div>
-          <button id="btn-generate-freeplay" class="w-full py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-lg transition">
-            Generate Random Puzzle
-          </button>
+          <button id="btn-generate-freeplay" class="btn-3d btn-teal w-full h-10 text-sm">Generate Random Puzzle</button>
         </div>
 
-        <!-- Custom Match -->
-        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
-          <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-400">Custom Match</h4>
+        <div class="stat-box p-4 space-y-3">
+          <h4 class="text-xs font-extrabold uppercase tracking-wider" style="color: var(--teal)">Custom match</h4>
           <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="text-[10px] text-slate-400">START WORD</label>
-              <input type="text" id="input-custom-start" placeholder="WARM" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100 font-mono uppercase">
+              <label class="text-[10px] font-extrabold" style="color: var(--ink-soft)">START WORD</label>
+              <input type="text" id="input-custom-start" placeholder="WARM" class="w-full bg-white border-2 rounded-xl p-2 text-sm font-display uppercase" style="border-color:#ece6dc">
             </div>
             <div>
-              <label class="text-[10px] text-slate-400">TARGET WORD</label>
-              <input type="text" id="input-custom-target" placeholder="COLD" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100 font-mono uppercase">
+              <label class="text-[10px] font-extrabold" style="color: var(--ink-soft)">TARGET WORD</label>
+              <input type="text" id="input-custom-target" placeholder="COLD" class="w-full bg-white border-2 rounded-xl p-2 text-sm font-display uppercase" style="border-color:#ece6dc">
             </div>
           </div>
-          <button id="btn-start-custom" class="w-full py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-400 text-xs font-bold rounded-lg transition">
-            Play Custom Pair
-          </button>
+          <button id="btn-start-custom" class="btn-3d btn-white w-full h-10 text-sm">Play Custom Pair</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- JavaScript Entry -->
   <script src="js/app.js"></script>
 </body>
 </html>
