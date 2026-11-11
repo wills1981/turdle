@@ -48,6 +48,7 @@ let userStats = {
 
 // Application Initialization
 window.onload = async () => {
+  setupInstall();
   applyFeatureFlags();
   loadStats();
   buildKeyboardUI();
@@ -58,10 +59,8 @@ window.onload = async () => {
 function applyFeatureFlags() {
   const el = id => document.getElementById(id);
   if (!FEATURES.freeplay) {
-    // Keep the "Daily" badge as a label, but make it inert
-    el('btn-mode-toggle').disabled = true;
-    el('btn-mode-toggle').style.opacity = '1';
-    el('btn-mode-toggle').style.cursor = 'default';
+    // Daily is the only mode, so the mode toggle and Settings have nothing to do
+    el('btn-mode-toggle').classList.add('hidden');
     el('btn-settings').classList.add('hidden');
   }
   if (!FEATURES.hint) el('btn-hint').classList.add('hidden');
@@ -88,7 +87,8 @@ function setupEventListeners() {
   
   document.getElementById('btn-undo').addEventListener('click', handleUndo);
   document.getElementById('btn-hint').addEventListener('click', handleHint);
-  document.getElementById('btn-giveup').addEventListener('click', handleGiveUp);
+  document.getElementById('btn-giveup').addEventListener('click', handleGiveUpTap);
+  document.getElementById('btn-install').addEventListener('click', handleInstall);
   document.getElementById('btn-share').addEventListener('click', handleShare);
   document.getElementById('btn-share-whatsapp').addEventListener('click', handleShareWhatsApp);
   document.getElementById('btn-copy').addEventListener('click', handleCopy);
@@ -192,6 +192,7 @@ function initGameSession() {
   const analysis = findRoute(gameState.startWord, gameState.targetWord);
   gameState.parMoves = analysis.optimalSteps;
   gameState.optimalPaths = analysis.paths;
+  restoreProgress();
 
   document.getElementById('start-word-display').innerText = gameState.startWord;
   document.getElementById('target-word-display').innerText = gameState.targetWord;
@@ -273,11 +274,13 @@ function isOneDiff(a, b) {
 // User Action Handlers
 function handleKeyInput(key) {
   if (gameState.isGameOver) return;
+  if (giveUpStage) resetGiveUp();
 
   if (key === 'BACKSPACE') {
     if (gameState.currentBuffer.length > 0) {
       gameState.currentBuffer = gameState.currentBuffer.slice(0, -1);
       renderGrid();
+      saveProgress();
     }
     return;
   }
@@ -291,6 +294,7 @@ function handleKeyInput(key) {
     if (gameState.currentBuffer.length < gameState.wordLength) {
       gameState.currentBuffer += key;
       renderGrid();
+      saveProgress();
     }
   }
 }
@@ -316,12 +320,14 @@ function submitWord() {
 
   gameState.history.push(word);
   gameState.currentBuffer = "";
+  saveProgress();
   renderGrid();
   updateStepCounter();
 
   if (word === gameState.targetWord) {
     gameState.isGameOver = true;
     gameState.result = 'won';
+    saveProgress();
     updateStepCounter();
     renderGrid();
     const playerSteps = gameState.history.length - 1;
@@ -341,6 +347,7 @@ function handleUndo() {
   if (gameState.history.length > 1 && !gameState.isGameOver) {
     gameState.history.pop();
     gameState.currentBuffer = "";
+    saveProgress();
     renderGrid();
     updateStepCounter();
   }
@@ -359,6 +366,78 @@ function handleHint() {
   }
 }
 
+// --- Progress persistence ----------------------------------------------------
+// Saved per puzzle so a refresh (or reopening the installed app) resumes where you
+// left off. A finished or given-up puzzle stays finished, so refreshing can't retry it.
+const PROGRESS_KEY = 'turdle-progress';
+
+function puzzleId() {
+  const date = (document.getElementById('puzzle-date-badge').innerText.match(/\d{4}-\d{2}-\d{2}/) || [''])[0];
+  return `${gameState.mode}|${date}|${gameState.startWord}|${gameState.targetWord}`;
+}
+
+function saveProgress() {
+  try {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify({
+      id: puzzleId(),
+      history: gameState.history,
+      buffer: gameState.currentBuffer,
+      result: gameState.result
+    }));
+  } catch (e) { /* storage unavailable (private mode etc.): just don't persist */ }
+}
+
+function restoreProgress() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(PROGRESS_KEY)); } catch (e) { return; }
+  if (!saved || saved.id !== puzzleId() || !Array.isArray(saved.history) || saved.history[0] !== gameState.startWord) return;
+  // Only trust saved words that are still valid one-letter steps
+  const history = [saved.history[0]];
+  for (const w of saved.history.slice(1)) {
+    if (!isOneDiff(history[history.length - 1], w) || !gameState.validWords.has(w)) break;
+    history.push(w);
+  }
+  gameState.history = history;
+  gameState.currentBuffer = typeof saved.buffer === 'string' ? saved.buffer.slice(0, gameState.wordLength) : '';
+  if (saved.result === 'won' && history[history.length - 1] === gameState.targetWord) {
+    gameState.result = 'won';
+    gameState.isGameOver = true;
+  } else if (saved.result === 'gaveup') {
+    gameState.result = 'gaveup';
+    gameState.isGameOver = true;
+  }
+}
+
+// Give Up needs three taps (two confirmations) so a stray tap can't end the game.
+// The confirmation resets if the player doesn't tap again within a few seconds.
+const GIVEUP_STAGES = ["Give Up", "Are you sure?", "Really give up?"];
+let giveUpStage = 0;
+let giveUpTimer = null;
+
+function resetGiveUp() {
+  clearTimeout(giveUpTimer);
+  giveUpStage = 0;
+  const btn = document.getElementById('btn-giveup');
+  document.getElementById('giveup-label').innerText = GIVEUP_STAGES[0];
+  btn.classList.remove('btn-confirm');
+}
+
+function handleGiveUpTap() {
+  if (gameState.isGameOver) return;
+  clearTimeout(giveUpTimer);
+  giveUpStage++;
+  if (giveUpStage >= GIVEUP_STAGES.length) {
+    resetGiveUp();
+    handleGiveUp();
+    return;
+  }
+  const btn = document.getElementById('btn-giveup');
+  document.getElementById('giveup-label').innerText = GIVEUP_STAGES[giveUpStage];
+  // Re-trigger the shake animation on each stage
+  btn.classList.remove('btn-confirm'); void btn.offsetWidth; btn.classList.add('btn-confirm');
+  giveUpTimer = setTimeout(resetGiveUp, 3000);
+}
+
 function handleGiveUp() {
   if (gameState.isGameOver) return;
   if (gameState.optimalPaths.length > 0) {
@@ -367,6 +446,7 @@ function handleGiveUp() {
   }
   gameState.isGameOver = true;
   gameState.result = 'gaveup';
+  saveProgress();
   recordLoss();
   updateStepCounter();
   renderGrid();
@@ -631,4 +711,47 @@ function hashCode(str) {
     h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
   }
   return h;
+}
+
+// --- Install as an app (PWA) ---------------------------------------------
+let deferredInstallPrompt = null;
+
+const isStandalone = () =>
+  window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const isIOS = () =>
+  /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS reports as Mac
+
+function setupInstall() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(e => console.log('Service worker not registered', e));
+  }
+  const btn = document.getElementById('btn-install');
+  if (isStandalone()) return; // already running as an app
+
+  // Android / desktop Chrome & Edge: the browser offers a real install prompt
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    btn.classList.remove('hidden');
+  });
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    btn.classList.add('hidden');
+    showToast('Turdle installed! 🎉', 'pop');
+  });
+
+  // iPhone / iPad: no prompt API, so show Add to Home Screen instructions instead
+  if (isIOS()) btn.classList.remove('hidden');
+}
+
+async function handleInstall() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === 'accepted') document.getElementById('btn-install').classList.add('hidden');
+    deferredInstallPrompt = null;
+  } else {
+    showModal('modal-install');
+  }
 }

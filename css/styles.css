@@ -21,6 +21,7 @@
   --tile-edge: #d6d0c6;
 }
 
+html, body { overscroll-behavior: none; }
 body {
   background: var(--cream);
   color: var(--ink);
@@ -125,3 +126,26 @@ body {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #e2d6c2; border-radius: 4px; }
+
+/* Fill exactly the visible screen on mobile: 100dvh excludes the browser's address bar
+   (100vh doesn't), so the keyboard is never pushed off-screen. */
+.app-shell { height: 100vh; height: 100dvh; overflow: hidden; }
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+
+/* App-like touch behaviour: no double-tap zoom or long-press callouts on controls */
+button { touch-action: manipulation; -webkit-touch-callout: none; }
+
+/* Give Up confirmation stages */
+.btn-confirm { background: var(--pink); color: #fff; border-color: #c93d5e; animation: shake .4s ease-in-out; }
+
+/* Short screens (small phones, or with the browser bars showing): tighten vertical space */
+@media (max-height: 640px) {
+  /* !important: Tailwind's CDN utilities are injected after this stylesheet */
+  #grid-hint { display: none !important; }
+  .key-btn { height: 44px !important; }
+  .tile { width: 46px; height: 46px; font-size: 1.25rem; }
+  .card { padding-top: .4rem !important; padding-bottom: .4rem !important; margin-top: .5rem !important; }
+  .word-chip { font-size: 1.2rem !important; padding: .05rem .7rem !important; }
+  #grid-scroll-area { margin-top: .5rem !important; margin-bottom: .5rem !important; }
+}
