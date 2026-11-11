@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Word Ladder - Daily Puzzle Game</title>
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              400: '#38bdf8',
+              500: '#06b6d4',
+              600: '#0891b2',
+              900: '#0f172a',
+            }
+          },
+          animation: {
+            'pop': 'pop 0.15s ease-in-out',
+            'shake': 'shake 0.4s ease-in-out',
+            'bounce-short': 'bounce 0.5s ease-in-out 2'
+          },
+          keyframes: {
+            pop: {
+              '0%': { transform: 'scale(0.95)' },
+              '50%': { transform: 'scale(1.05)' },
+              '100%': { transform: 'scale(1)' },
+            },
+            shake: {
+              '0%, 100%': { transform: 'translateX(0)' },
+              '20%, 60%': { transform: 'translateX(-6px)' },
+              '40%, 80%': { transform: 'translateX(6px)' },
+            }
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-cyan-500 selection:text-white">
+
+  <!-- Header Navigation -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 font-black text-xl text-white">
+          W
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">LADDER</h1>
+          <p class="text-[10px] text-slate-400 font-medium tracking-widest uppercase">Word Shift Puzzle</p>
+        </div>
+      </div>
+
+      <!-- Header Controls -->
+      <div class="flex items-center space-x-1 sm:space-x-2">
+        <button id="btn-mode-toggle" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 transition flex items-center space-x-1.5">
+          <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+          <span id="mode-label">Daily</span>
+        </button>
+
+        <button id="btn-help" class="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition" title="How to Play">
+          <i data-lucide="help-circle" class="w-5 h-5"></i>
+        </button>
+        <button id="btn-stats" class="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition" title="Statistics">
+          <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+        </button>
+        <button id="btn-settings" class="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition" title="Settings & Free Play">
+          <i data-lucide="settings" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Game Container -->
+  <main class="flex-1 max-w-xl w-full mx-auto p-4 flex flex-col justify-between items-center">
+    
+    <!-- Target Header Info -->
+    <div class="w-full text-center my-2">
+      <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-400 mb-2">
+        <span id="puzzle-date-badge">Today's Ladder</span>
+        <span>•</span>
+        <span id="word-len-badge">4 Letters</span>
+        <span>•</span>
+        <span id="par-badge" class="text-cyan-400 font-semibold">Par: --</span>
+      </div>
+
+      <!-- Target Words Banner -->
+      <div class="flex items-center justify-center space-x-4 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl">
+        <div class="text-center">
+          <div class="text-[10px] uppercase tracking-wider text-slate-400 mb-1">Start</div>
+          <div id="start-word-display" class="text-2xl sm:text-3xl font-black text-cyan-400 tracking-widest font-mono">----</div>
+        </div>
+
+        <div class="flex flex-col items-center px-2">
+          <i data-lucide="arrow-right" class="w-6 h-6 text-slate-500"></i>
+          <span id="step-counter" class="text-xs font-bold text-slate-400 mt-1">0 steps</span>
+        </div>
+
+        <div class="text-center">
+          <div class="text-[10px] uppercase tracking-wider text-slate-400 mb-1">Target</div>
+          <div id="target-word-display" class="text-2xl sm:text-3xl font-black text-emerald-400 tracking-widest font-mono">----</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-20 z-50 left-1/2 -translate-x-1/2 pointer-events-none flex flex-col items-center space-y-2"></div>
+
+    <!-- Word Grid Container -->
+    <div id="grid-scroll-area" class="w-full flex-1 flex flex-col items-center justify-start my-3 overflow-y-auto max-h-[380px] space-y-2 pr-1">
+      <div id="ladder-grid" class="flex flex-col items-center space-y-2 w-full">
+        <!-- Dynamic Word Rows Injected Here -->
+      </div>
+    </div>
+
+    <!-- In-Game Action Bar -->
+    <div id="game-controls" class="w-full flex items-center justify-between px-2 mb-3">
+      <button id="btn-undo" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg flex items-center space-x-1 transition disabled:opacity-40">
+        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+        <span>Undo</span>
+      </button>
+
+      <div class="flex items-center space-x-2">
+        <button id="btn-hint" class="px-3 py-1.5 text-xs font-medium bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-lg flex items-center space-x-1 transition">
+          <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i>
+          <span>Hint</span>
+        </button>
+        <button id="btn-giveup" class="px-3 py-1.5 text-xs font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg flex items-center space-x-1 transition">
+          <i data-lucide="flag" class="w-3.5 h-3.5"></i>
+          <span>Give Up</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- On-Screen Virtual Keyboard -->
+    <div id="keyboard" class="w-full max-w-md select-none">
+      <div id="kbd-row-1" class="flex justify-center space-x-1 mb-1.5"></div>
+      <div id="kbd-row-2" class="flex justify-center space-x-1 mb-1.5"></div>
+      <div id="kbd-row-3" class="flex justify-center space-x-1"></div>
+    </div>
+  </main>
+
+  <!-- MODAL: How To Play -->
+  <div id="modal-help" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+      <button class="modal-close absolute top-4 right-4 text-slate-400 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      <h3 class="text-xl font-bold text-slate-100 mb-3 flex items-center space-x-2">
+        <i data-lucide="help-circle" class="w-5 h-5 text-cyan-400"></i>
+        <span>How to Play</span>
+      </h3>
+      <div class="text-sm text-slate-300 space-y-3 leading-relaxed">
+        <p>Change the <strong>Start Word</strong> into the <strong>Target Word</strong> by altering <strong>exactly one letter</strong> at a time.</p>
+        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+          <div class="flex items-center space-x-2 font-mono font-bold text-sm">
+            <span class="px-2 py-1 bg-slate-800 text-slate-400 rounded">C A T S</span>
+            <i data-lucide="arrow-right" class="w-4 h-4 text-slate-600"></i>
+            <span class="px-2 py-1 bg-slate-800 text-cyan-400 rounded">C O T S</span>
+          </div>
+          <div class="flex items-center space-x-2 font-mono font-bold text-sm">
+            <span class="px-2 py-1 bg-slate-800 text-cyan-400 rounded">C O T S</span>
+            <i data-lucide="arrow-right" class="w-4 h-4 text-slate-600"></i>
+            <span class="px-2 py-1 bg-slate-800 text-emerald-400 rounded">D O T S</span>
+          </div>
+        </div>
+        <ul class="list-disc list-inside space-y-1 text-slate-400 text-xs">
+          <li>Every step must be a valid English word.</li>
+          <li>Solve the ladder in as few steps as possible!</li>
+        </ul>
+      </div>
+      <button class="modal-close mt-5 w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl text-sm transition">Got it!</button>
+    </div>
+  </div>
+
+  <!-- MODAL: Stats -->
+  <div id="modal-stats" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+      <button class="modal-close absolute top-4 right-4 text-slate-400 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      <h3 class="text-xl font-bold text-slate-100 mb-4 flex items-center space-x-2">
+        <i data-lucide="bar-chart-2" class="w-5 h-5 text-cyan-400"></i>
+        <span>Statistics</span>
+      </h3>
+      
+      <div class="grid grid-cols-4 gap-2 mb-5 text-center">
+        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+          <div id="stat-played" class="text-xl font-black text-slate-100">0</div>
+          <div class="text-[10px] text-slate-400 font-medium uppercase">Played</div>
+        </div>
+        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+          <div id="stat-winrate" class="text-xl font-black text-slate-100">0%</div>
+          <div class="text-[10px] text-slate-400 font-medium uppercase">Win %</div>
+        </div>
+        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+          <div id="stat-streak" class="text-xl font-black text-cyan-400">0</div>
+          <div class="text-[10px] text-slate-400 font-medium uppercase">Current</div>
+        </div>
+        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+          <div id="stat-maxstreak" class="text-xl font-black text-emerald-400">0</div>
+          <div class="text-[10px] text-slate-400 font-medium uppercase">Max Streak</div>
+        </div>
+      </div>
+
+      <button id="btn-share" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm transition flex items-center justify-center space-x-2">
+        <i data-lucide="share-2" class="w-4 h-4"></i>
+        <span>Share Results</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: Settings & Free Play -->
+  <div id="modal-settings" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <button class="modal-close absolute top-4 right-4 text-slate-400 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      <h3 class="text-xl font-bold text-slate-100 mb-4 flex items-center space-x-2">
+        <i data-lucide="settings" class="w-5 h-5 text-cyan-400"></i>
+        <span>Settings & Freeplay</span>
+      </h3>
+
+      <div class="space-y-4">
+        <!-- Free Play Generator -->
+        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-400">Free Play Generator</h4>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Select Word Length</label>
+            <div class="grid grid-cols-4 gap-2">
+              <button data-len="3" class="btn-len-select p-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg border border-slate-700 text-slate-300">3</button>
+              <button data-len="4" class="btn-len-select p-2 bg-cyan-600 text-white text-xs font-bold rounded-lg border border-cyan-500">4</button>
+              <button data-len="5" class="btn-len-select p-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg border border-slate-700 text-slate-300">5</button>
+              <button data-len="6" class="btn-len-select p-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold rounded-lg border border-slate-700 text-slate-300">6</button>
+            </div>
+          </div>
+          <button id="btn-generate-freeplay" class="w-full py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold rounded-lg transition">
+            Generate Random Puzzle
+          </button>
+        </div>
+
+        <!-- Custom Match -->
+        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-400">Custom Match</h4>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[10px] text-slate-400">START WORD</label>
+              <input type="text" id="input-custom-start" placeholder="WARM" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100 font-mono uppercase">
+            </div>
+            <div>
+              <label class="text-[10px] text-slate-400">TARGET WORD</label>
+              <input type="text" id="input-custom-target" placeholder="COLD" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100 font-mono uppercase">
+            </div>
+          </div>
+          <button id="btn-start-custom" class="w-full py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-400 text-xs font-bold rounded-lg transition">
+            Play Custom Pair
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Entry -->
+  <script src="js/app.js"></script>
+</body>
+</html>

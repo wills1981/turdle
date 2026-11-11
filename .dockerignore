@@ -1,0 +1,6 @@
+.DS_Store
+.git
+README.md
+project_generator.py
+Dockerfile
+docker-compose.yml

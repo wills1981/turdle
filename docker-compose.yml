@@ -1,0 +1,12 @@
+services:
+  turdle:
+    build: .
+    ports:
+      - "8080:80"
+    # Mount the source read-only so edits show up on refresh without a rebuild
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+      - ./puzzles.txt:/usr/share/nginx/html/puzzles.txt:ro
+      - ./css:/usr/share/nginx/html/css:ro
+      - ./js:/usr/share/nginx/html/js:ro
+      - ./dictionaries:/usr/share/nginx/html/dictionaries:ro

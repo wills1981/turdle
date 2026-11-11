@@ -1,0 +1,35 @@
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Python (project_generator.py)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Node (in case of local tooling)
+node_modules/
+npm-debug.log*
+
+# Environment / secrets
+.env
+.env.*
+
+# Docker local overrides
+docker-compose.override.yml
+
+# Logs
+*.log
