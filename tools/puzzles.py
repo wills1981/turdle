@@ -24,12 +24,21 @@ HEADER = "# Date (YYYY-MM-DD) | Start Word | Target Word"
 
 # --- Fairness rules -------------------------------------------------------
 LENGTHS = (3, 4, 5, 6)
-MIN_PAR = 4
-MAX_PAR = {3: 5, 4: 6, 5: 6, 6: 6}
+MIN_PAR = {3: 5, 4: 4, 5: 4, 6: 4}   # 3-letter puzzles are short, so make them work harder
+MAX_PAR = {3: 6, 4: 6, 5: 6, 6: 6}
 MIN_ROUTES = 2           # distinct shortest routes, so one wrong turn isn't fatal
 MAX_WORD_USES = 2        # times a word may appear as start/target in the file
-PAR_WEIGHTS = {4: 3, 5: 3, 6: 1}  # generator favours mid-length ladders
+# generator weights by par: favour mid-length ladders, but push 3-letter ones as long as possible
+PAR_WEIGHTS = {3: {5: 1, 6: 2}, 4: {4: 3, 5: 3, 6: 1}, 5: {4: 3, 5: 3, 6: 1}, 6: {4: 3, 5: 3, 6: 1}}
+# start and target share no letter in the same position
+# puzzles before this date predate this rule and the 3-letter MIN_PAR of 5 (they used 4), so are exempt
+NEW_RULES_FROM = dt.date(2026, 11, 13)
 # ---------------------------------------------------------------------------
+
+
+def shared_positions(start, target):
+    return [i + 1 for i, (a, b) in enumerate(zip(start, target)) if a == b]
+
 
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 _cache = {}
@@ -81,14 +90,20 @@ def analyse(start, target):
     return dist[target], ways[target], path[::-1]
 
 
-def fairness_problems(start, target, result):
+def fairness_problems(start, target, result, date=None):
     n = len(start)
     problems = []
+    new_rules = date is None or date >= NEW_RULES_FROM
+    if new_rules:
+        shared = shared_positions(start, target)
+        if shared:
+            problems.append(f"shares a letter in position {', '.join(map(str, shared))}")
     if result is None:
-        return ["no route through common words"]
+        return problems + ["no route through common words"]
     par, routes, _ = result
-    if not MIN_PAR <= par <= MAX_PAR[n]:
-        problems.append(f"par {par} outside {MIN_PAR}-{MAX_PAR[n]}")
+    min_par = MIN_PAR[n] if new_rules else 4
+    if not min_par <= par <= MAX_PAR[n]:
+        problems.append(f"par {par} outside {min_par}-{MAX_PAR[n]}")
     if routes < MIN_ROUTES:
         problems.append(f"only {routes} shortest route (need {MIN_ROUTES}+)")
     return problems
@@ -138,7 +153,7 @@ def check(path=PUZZLES, verbose=True):
         pairs.add(frozenset((start, target)))
         uses.update((start, target))
         result = analyse(start, target)
-        problems += fairness_problems(start, target, result)
+        problems += fairness_problems(start, target, result, date)
         if result:
             pars[result[0]] += 1
         if verbose:
@@ -169,7 +184,8 @@ def fair_pairs():
         for s in silly:
             dist, ways, _ = explore(s, common | set(silly))
             for t in silly:
-                if t > s and t in dist and MIN_PAR <= dist[t] <= MAX_PAR[n] and ways[t] >= MIN_ROUTES:
+                if (t > s and t in dist and MIN_PAR[n] <= dist[t] <= MAX_PAR[n] and ways[t] >= MIN_ROUTES
+                        and not shared_positions(s, t)):
                     # confirm with the exact pool the game uses (start/target only, not all silly words)
                     r = analyse(s, t)
                     if not fairness_problems(s, t, r):
@@ -190,7 +206,7 @@ def generate(start_date, end_date, seed=None, existing=()):
             options = [(s, t, par) for s, t, par in pairs_by_len[n]
                        if frozenset((s, t)) not in used_pairs and uses[s] < MAX_WORD_USES and uses[t] < MAX_WORD_USES]
             if options:
-                s, t, _ = rng.choices(options, weights=[PAR_WEIGHTS.get(o[2], 1) for o in options])[0]
+                s, t, _ = rng.choices(options, weights=[PAR_WEIGHTS[n].get(o[2], 1) for o in options])[0]
                 if rng.random() < 0.5:
                     s, t = t, s
                 break

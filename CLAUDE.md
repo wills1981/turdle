@@ -35,8 +35,12 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
 
 ### Fairness rules (puzzles must not be so hard that players give up)
 Enforced by `tools/puzzles.py check`; the constants live at the top of that file.
-- **Par** (shortest route through common words): 4–5 for 3-letter puzzles, 4–6 for 4–6 letters.
-  Par 3 felt too easy; par 7+ makes players give up.
+- **Par** (shortest route through common words): 5–6 for 3-letter puzzles (kept tricky; the generator favours 6),
+  4–6 for 4–6 letters. Par 3 felt too easy; par 7+ makes players give up.
+- **No shared letter positions**: start and target never have the same letter in the same position
+  (e.g. SPUD→SOCK is out). This currently rules out 6-letter puzzles (par would have to be exactly 6 with 2+ routes,
+  and no silly pair manages it). Puzzles before 2026-11-13 predate this rule and the 3-letter par minimum
+  (`NEW_RULES_FROM` in `tools/puzzles.py`).
 - **At least 2 distinct shortest routes**, so one wrong turn isn't fatal.
 - **Route words must be everyday words**: the par route goes only through `common-N.txt`.
   Words that only connect via obscure words (e.g. EGGS needs ERGS, BREATH is a near-island) are out.
