@@ -598,10 +598,12 @@ function updateStatsUI() {
 function buildShareText() {
   const steps = gameState.history.length - 1;
   const par = gameState.parMoves;
-  let label = 'Free Play';
+  let label = 'Free Play', query = '';
   if (gameState.mode === 'daily') {
     const date = (document.getElementById('puzzle-date-badge').innerText.match(/\d{4}-\d{2}-\d{2}/) || [''])[0];
     label = date ? `#${puzzleNumber(date)} ${date}` : '';
+    // A new URL per puzzle makes WhatsApp etc. fetch a fresh link preview instead of a cached one
+    if (date) query = `?p=${puzzleNumber(date)}`;
   }
   const lines = [`Turdle 💩 ${label}`.trim(), `${gameState.startWord} ➔ ${gameState.targetWord}`];
   if (gameState.result === 'won') {
@@ -615,7 +617,7 @@ function buildShareText() {
   for (const word of gameState.history) {
     lines.push([...word].map((c, i) => (c === target[i] ? '🟩' : '⬜')).join(''));
   }
-  lines.push('', location.origin + location.pathname);
+  lines.push('', location.origin + location.pathname + query);
   return lines.join('\n');
 }
 
