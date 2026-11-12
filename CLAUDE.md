@@ -56,5 +56,6 @@ Enforced by `tools/puzzles.py check`; the constants live at the top of that file
    It prints par, the number of routes and an example route for each day, and exits non-zero if any rule is broken.
 3. If the generator runs out of fair pairs, add words to `tools/silly_words.txt` and rerun.
 4. Don't change today's or past puzzles once they're live; players may have already played them.
+5. Puzzle numbers (#1, #2…) are days since 2026-11-11 + 1 (`FIRST_PUZZLE_DATE` in `js/app.js`), so never delete or shift past dates.
 
 After rebuilding dictionaries (`python3 tools/build_dictionaries.py`), puzzles are rechecked automatically.

@@ -111,6 +111,14 @@ function setupEventListeners() {
   window.addEventListener('keydown', handlePhysicalKeyboard);
 }
 
+// Puzzle #1 is the first day in puzzles.txt; numbers count days from there.
+const FIRST_PUZZLE_DATE = '2026-11-11';
+
+function puzzleNumber(dateStr) {
+  const day = s => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10));
+  return Math.round((day(dateStr) - day(FIRST_PUZZLE_DATE)) / 86400000) + 1;
+}
+
 // Data Fetching & Loaders
 async function loadPuzzleMode(mode) {
   gameState.mode = mode;
@@ -149,7 +157,7 @@ async function loadPuzzleMode(mode) {
     gameState.startWord = dailyPair.start;
     gameState.targetWord = dailyPair.target;
     gameState.wordLength = dailyPair.start.length;
-    document.getElementById('puzzle-date-badge').innerText = `Daily (${todayStr})`;
+    document.getElementById('puzzle-date-badge').innerText = `Daily #${puzzleNumber(todayStr)} (${todayStr})`;
   }
 
   await loadDictionary(gameState.wordLength);
@@ -590,9 +598,11 @@ function updateStatsUI() {
 function buildShareText() {
   const steps = gameState.history.length - 1;
   const par = gameState.parMoves;
-  const label = gameState.mode === 'daily'
-    ? (document.getElementById('puzzle-date-badge').innerText.match(/\d{4}-\d{2}-\d{2}/) || [''])[0]
-    : 'Free Play';
+  let label = 'Free Play';
+  if (gameState.mode === 'daily') {
+    const date = (document.getElementById('puzzle-date-badge').innerText.match(/\d{4}-\d{2}-\d{2}/) || [''])[0];
+    label = date ? `#${puzzleNumber(date)} ${date}` : '';
+  }
   const lines = [`Turdle 💩 ${label}`.trim(), `${gameState.startWord} ➔ ${gameState.targetWord}`];
   if (gameState.result === 'won') {
     const verdict = par === null ? '' : steps <= par ? ' ⛳ on par!' : ` (par ${par})`;
