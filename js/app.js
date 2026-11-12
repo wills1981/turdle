@@ -603,11 +603,11 @@ function buildShareText() {
     const date = (document.getElementById('puzzle-date-badge').innerText.match(/\d{4}-\d{2}-\d{2}/) || [''])[0];
     label = date ? `#${puzzleNumber(date)} ${date}` : '';
     // A new URL per puzzle makes WhatsApp etc. fetch a fresh link preview instead of a cached one.
-    // The weekday page (e.g. thu/) carries that day's preview image and redirects to the game;
+    // The weekday page (e.g. s/thu.html) carries that day's preview image and redirects to the game;
     // see tools/make_og_images.js.
     if (date) {
       const day = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date(date + 'T00:00:00Z').getUTCDay()];
-      query = `${day}/?p=${puzzleNumber(date)}`;
+      query = `s/${day}.html?p=${puzzleNumber(date)}`;
     }
   }
   const lines = [`Turdle 💩 ${label}`.trim(), `${gameState.startWord} ➔ ${gameState.targetWord}`];

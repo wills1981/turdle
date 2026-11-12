@@ -1,5 +1,5 @@
 // Renders the weekday link-preview images (icons/og-<day>.png, plus icons/og-image.png = Monday)
-// and writes the weekday share pages (<day>/index.html) that point crawlers at them.
+// and writes the weekday share pages (s/<day>.html) that point crawlers at them.
 // The game's share link goes to the puzzle's weekday page, which redirects straight to the game.
 //
 //   node tools/make_og_images.js
@@ -51,7 +51,7 @@ function sharePage(day, word) {
   <meta property="og:site_name" content="Turdle!">
   <meta property="og:title" content="Turdle! - Daily Puzzle Game">
   <meta property="og:description" content="A silly daily word-ladder puzzle by Rob Wills &amp; AI!">
-  <meta property="og:url" content="${SITE}${day}/">
+  <meta property="og:url" content="${SITE}s/${day}.html">
   <meta property="og:image" content="${img}">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -78,8 +78,8 @@ function sharePage(day, word) {
     await page.evaluate(() => document.fonts.ready);
     await page.screenshot({ path: path.join(ROOT, `icons/og-${day}.png`) });
     if (day === 'mon') fs.copyFileSync(path.join(ROOT, 'icons/og-mon.png'), path.join(ROOT, 'icons/og-image.png'));
-    fs.mkdirSync(path.join(ROOT, day), { recursive: true });
-    fs.writeFileSync(path.join(ROOT, day, 'index.html'), sharePage(day, word));
+    fs.mkdirSync(path.join(ROOT, 's'), { recursive: true });
+    fs.writeFileSync(path.join(ROOT, 's', `${day}.html`), sharePage(day, word));
     console.log(`${day}: ${word}`);
   }
   await browser.close();
