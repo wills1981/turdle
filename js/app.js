@@ -94,6 +94,7 @@ function setupEventListeners() {
   document.getElementById('btn-share-whatsapp').addEventListener('click', handleShareWhatsApp);
   document.getElementById('btn-copy').addEventListener('click', handleCopy);
   document.getElementById('btn-yesterday').addEventListener('click', showYesterday);
+  document.getElementById('btn-next-ready').addEventListener('click', () => location.reload());
   document.getElementById('btn-theme').addEventListener('click', showTheme);
   document.getElementById('btn-theme-stats').addEventListener('click', showTheme);
   document.getElementById('btn-yesterday-back').addEventListener('click', () => { hideModals(); updateStatsUI(); showModal('modal-stats'); });
@@ -126,6 +127,21 @@ function puzzleNumber(dateStr) {
   return Math.round((day(dateStr) - day(FIRST_PUZZLE_DATE)) / 86400000) + 1;
 }
 
+// The daily puzzle changes at midnight UK time (Europe/London: GMT in winter, BST in summer)
+const UK_TZ = 'Europe/London';
+
+function todayUK() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: UK_TZ }).format(new Date()); // YYYY-MM-DD
+}
+
+function msUntilUKMidnight() {
+  const parts = {};
+  new Intl.DateTimeFormat('en-GB', { timeZone: UK_TZ, hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    .formatToParts(new Date()).forEach(p => { parts[p.type] = +p.value; });
+  const sinceMidnight = ((parts.hour * 60 + parts.minute) * 60 + parts.second) * 1000 + new Date().getMilliseconds();
+  return Math.max(0, 86400000 - sinceMidnight);
+}
+
 // Every line of puzzles.txt by date (filled by loadPuzzleMode), used by the yesterday view
 let scheduleByDate = {};
 
@@ -144,7 +160,7 @@ async function loadPuzzleMode(mode) {
   document.getElementById('mode-label').innerText = mode === 'daily' ? 'Daily' : 'Free Play';
 
   if (mode === 'daily') {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = todayUK();
     let dailyPair = null;
 
     try {
@@ -747,8 +763,7 @@ function ladderElement(words, target) {
 }
 
 async function showYesterday() {
-  const today = new Date().toISOString().split('T')[0];
-  const date = new Date(Date.parse(today + 'T00:00:00Z') - 86400000).toISOString().split('T')[0];
+  const date = dayBefore(todayUK());
   const el = id => document.getElementById(id);
   hideModals();
   showModal('modal-yesterday');
@@ -805,6 +820,7 @@ function showToast(msg, anim = "") {
 
 function showModal(id) { document.getElementById(id).classList.remove('hidden'); }
 function hideModals() {
+  stopCountdown();
   document.querySelectorAll('[id^="modal-"]').forEach(m => m.classList.add('hidden'));
   document.getElementById('theme-audio').pause();
 }
@@ -831,7 +847,7 @@ function loadStats() {
   if (saved) userStats = JSON.parse(saved);
   // A missed day breaks the streak. lastDaily is the date of the last daily game counted;
   // stats saved before it existed have none, so those streaks carry on untouched.
-  const today = new Date().toISOString().split('T')[0];
+  const today = todayUK();
   if (userStats.lastDaily && userStats.lastDaily < dayBefore(today) && userStats.streak) {
     userStats.streak = 0;
     saveStats();
@@ -884,6 +900,38 @@ function updateStatsUI() {
   document.getElementById('stat-streak').innerText = userStats.streak;
   document.getElementById('stat-maxstreak').innerText = userStats.maxStreak;
   document.getElementById('btn-theme-stats').classList.toggle('hidden', !gameState.result);
+  startCountdown();
+}
+
+// --- Countdown to the next daily puzzle (UK midnight), shown in the stats window ---
+let countdownTimer = null;
+
+function stopCountdown() {
+  clearInterval(countdownTimer);
+  countdownTimer = null;
+}
+
+function startCountdown() {
+  stopCountdown();
+  const box = document.getElementById('next-wrap');
+  box.classList.toggle('hidden', gameState.mode !== 'daily');
+  if (gameState.mode !== 'daily') return;
+  const shownDate = (document.getElementById('puzzle-date-badge').innerText.match(/\d{4}-\d{2}-\d{2}/) || [''])[0];
+  const tick = () => {
+    const ms = msUntilUKMidnight();
+    // Past midnight, or the app was left open overnight: today's puzzle is waiting
+    const ready = ms < 1000 || (shownDate && shownDate !== todayUK());
+    document.getElementById('next-countdown-row').classList.toggle('hidden', ready);
+    document.getElementById('btn-next-ready').classList.toggle('hidden', !ready);
+    if (ready) return stopCountdown();
+    const secs = Math.ceil(ms / 1000);
+    const pad = n => String(n).padStart(2, '0');
+    document.getElementById('next-countdown').innerText =
+      `${pad(Math.floor(secs / 3600))}:${pad(Math.floor(secs / 60) % 60)}:${pad(secs % 60)}`;
+  };
+  tick();
+  if (!document.getElementById('btn-next-ready').classList.contains('hidden')) return;
+  countdownTimer = setInterval(tick, 1000);
 }
 
 function buildShareText() {

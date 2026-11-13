@@ -170,6 +170,14 @@
         </div>
       </div>
 
+      <div id="next-wrap" class="stat-box px-3 py-2 mb-4 text-center hidden">
+        <div id="next-countdown-row">
+          <div class="text-[10px] font-extrabold uppercase" style="color: var(--ink-soft)">Next Turdle in</div>
+          <div id="next-countdown" class="font-display text-2xl font-bold tabular-nums" style="color: var(--rust)">--:--:--</div>
+        </div>
+        <button id="btn-next-ready" class="btn-3d btn-green w-full h-11 text-sm flex items-center justify-center gap-2 hidden"><span aria-hidden="true">💩</span>New puzzle ready! Play now</button>
+      </div>
+
       <div class="space-y-2">
         <button id="btn-theme-stats" class="btn-3d btn-yellow w-full min-h-12 py-2 px-3 text-sm leading-tight flex items-center justify-center gap-2 hidden"><span aria-hidden="true">🎶</span>Sing along to the Turdle theme!</button>
         <button id="btn-share" class="btn-3d btn-teal w-full h-12 text-base flex items-center justify-center gap-2"><span aria-hidden="true">📤</span>Share Results</button>
@@ -284,6 +292,6 @@
   </div>
 
   <!-- Bump ?v= with each release so the page never runs against an older cached script -->
-  <script src="js/app.js?v=3"></script>
+  <script src="js/app.js?v=4"></script>
 </body>
 </html>

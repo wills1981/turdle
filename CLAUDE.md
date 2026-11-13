@@ -5,7 +5,8 @@ Static site (`index.html`, `js/app.js`, `css/`) hosted on GitHub Pages from `mai
 Run it locally with `docker compose up`, then open http://localhost:8080 (source is bind-mounted, so refresh to see changes).
 
 ## Layout
-- `puzzles.txt`: the daily puzzle schedule (see below). `js/app.js` picks today's line by UTC date.
+- `puzzles.txt`: the daily puzzle schedule (see below). `js/app.js` picks today's line by UK date (Europe/London),
+  so the puzzle changes at UK midnight; the stats window counts down to it (`todayUK`, `msUntilUKMidnight`).
 - `dictionaries/dictionary-N.txt`: every word accepted as a guess (SCOWL en_GB size ≤60).
 - `dictionaries/common-N.txt`: everyday words (SCOWL ≤35). The game's solver (`findRoute`) routes through
   these for Par and Give Up, falling back to the full list only if needed.
