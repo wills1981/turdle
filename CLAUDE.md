@@ -25,7 +25,7 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
 - Releasing a change to `js/app.js` or `css/styles.css`: bump the `?v=` on their tags in `index.html`, so an
   installed app never runs a new page against an old cached script. `sw.js` revalidates our own files on every load.
 - Turdle Theme (header poo-quaver button, and the stats window once finished): plays/downloads
-  `audio-files/wordle-theme.mp3`, with the lyrics written into `index.html`. The lyrics spell out puzzle #3's answer,
+  `audio-files/turdle-theme.mp3`, with the lyrics written into `index.html`. The lyrics spell out puzzle #3's answer,
   so on that day only (`LYRICS_SPOILER_DATE`) they stay hidden until the puzzle is finished.
 - `project_generator.py` is stale (old tiny word lists, old README). Don't run it, as it would overwrite the project.
 
