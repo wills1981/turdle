@@ -1,4 +1,4 @@
-# Slurs removed from both word lists, so they never appear in Par, hint,
+# Slurs (and a few crude words) removed from both word lists, so they never appear in Par, hint,
 # Give Up or free-play routes (and aren't accepted as guesses).
 # One word per line, case-insensitive. Rerun build_dictionaries.py after editing.
 CHINK
@@ -33,3 +33,5 @@ WOP
 WOPS
 SLUT
 SLUTS
+WHORE
+WHORES

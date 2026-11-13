@@ -25,7 +25,7 @@ Today's game is saved in the browser, so a finished puzzle stays finished. To cl
 localStorage.removeItem('turdle-progress'); location.reload();
 ```
 
-Stats and streak (`word_ladder_stats`) are kept, but each replay adds to them. Localhost and the live site keep separate storage, so this never touches your real streak.
+Stats and streak (`word_ladder_stats`) are kept, and a replay of a day already counted is not added to them again. Localhost and the live site keep separate storage, so this never touches your real streak.
 
 ## 📖 Dictionaries
 

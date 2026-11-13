@@ -829,6 +829,29 @@ function showTheme() {
 function loadStats() {
   const saved = localStorage.getItem('word_ladder_stats');
   if (saved) userStats = JSON.parse(saved);
+  // A missed day breaks the streak. lastDaily is the date of the last daily game counted;
+  // stats saved before it existed have none, so those streaks carry on untouched.
+  const today = new Date().toISOString().split('T')[0];
+  if (userStats.lastDaily && userStats.lastDaily < dayBefore(today) && userStats.streak) {
+    userStats.streak = 0;
+    saveStats();
+  }
+}
+
+function dayBefore(dateStr) {
+  return new Date(Date.parse(dateStr + 'T00:00:00Z') - 86400000).toISOString().split('T')[0];
+}
+
+// For daily games: false if this puzzle's date was already counted (e.g. replayed after clearing
+// turdle-progress), otherwise breaks the streak if the previous daily wasn't the day before.
+function countDaily() {
+  if (gameState.mode !== 'daily') return true;
+  const date = (document.getElementById('puzzle-date-badge').innerText.match(/\d{4}-\d{2}-\d{2}/) || [''])[0];
+  if (!date) return true;
+  if (userStats.lastDaily === date) return false;
+  if (userStats.lastDaily && userStats.lastDaily !== dayBefore(date)) userStats.streak = 0;
+  userStats.lastDaily = date;
+  return true;
 }
 
 function saveStats() {
@@ -836,6 +859,7 @@ function saveStats() {
 }
 
 function recordWin(parDiff) {
+  if (!countDaily()) return;
   userStats.played++;
   userStats.wins++;
   userStats.streak++;
@@ -847,6 +871,7 @@ function recordWin(parDiff) {
 }
 
 function recordLoss() {
+  if (!countDaily()) return;
   userStats.played++;
   userStats.streak = 0;
   saveStats();

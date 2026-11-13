@@ -22,6 +22,8 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
   Players can mute from the stats window (🔊/🔇, saved as `turdle-sound`).
 - "See yesterday's answer" (stats window) shows yesterday's par route, plus the player's own ladder from
   `turdle-past` (localStorage, last 7 daily games). Never reset `word_ladder_stats` or `turdle-progress`: they hold streaks.
+- Streaks are date-aware: `word_ladder_stats.lastDaily` is the last daily counted. A replay of the same date is not
+  counted again, and a missed day resets the streak. Stats from before `lastDaily` existed carry on untouched.
 - Releasing a change to `js/app.js` or `css/styles.css`: bump the `?v=` on their tags in `index.html`, so an
   installed app never runs a new page against an old cached script. `sw.js` revalidates our own files on every load.
 - Turdle Theme (header poo-quaver button, and the stats window once finished): plays/downloads
@@ -42,7 +44,9 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
 
 ### Theme
 - Start and target words are silly and cheeky: toilet humour, body bits, smells, insults like GIT and NERD
-  (e.g. FART, PANTS, POOP, BUMS, BURPS, WILLY, SNOT).
+  (e.g. FART, PANTS, POOP, BUMS, BURPS, WILLY, SNOT), or daft insults (DAFT, PLUM, WALLY, NITWIT).
+- At least one of start/target must be silly; the other can be an everyday word from `common-N.txt`
+  (the generator prefers both silly, 3:1).
 - Cheeky is fine; hateful is not. Never use anything in `tools/blocklist.txt` or any slur.
 - Mix word lengths randomly across 3–6 letters.
 - Start/target words only need to be in `dictionary-N.txt`; they don't need to be common.

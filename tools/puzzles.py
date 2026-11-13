@@ -6,6 +6,7 @@
 
 Routes are found the same way the game does (findRoute in js/app.js): through the
 everyday words in dictionaries/common-N.txt, plus the puzzle's own start and target.
+Generated puzzles have at least one word from tools/silly_words.txt; the other is silly or an everyday word.
 The fairness rules below are the single source of truth; see CLAUDE.md.
 """
 import argparse
@@ -175,22 +176,51 @@ def silly_words():
             for n in LENGTHS}
 
 
+# Everyday words that make a flat start/target: function words, and past tenses (RARED, HALED)
+DULL_PLAIN_WORDS = set("""
+ADO AGO ALL AND ANY ARE ATE AYE BUT CAN DID DUE EGO ERA FOR FRO GOT HAD HAS HER HIM HIS HOW ILL INN
+ION ITS LET MAY NOR NOT NOW OFF OUR OUT OWE OWN PER SHE THE TOO TWO USE VIA WAS WHO WHY YES YET YOU
+ALSO BEEN FROM HAVE INTO JUST ONLY SOME THAN THAT THEM THEN THEY THIS UPON WERE WHAT WHEN WITH YOUR
+ABOUT AFTER THEIR THERE THESE THOSE WHICH WHILE WOULD COULD SHALL
+""".split())
+
+
+def plain_word_too_dull(w):
+    return w in DULL_PLAIN_WORDS or w.endswith("ED")
+
+
 def fair_pairs():
-    """All (start, target) silly pairs that pass the fairness rules, per length."""
+    """All fair (start, target, par, both_silly) pairs per length. At least one word is silly;
+    the other is another silly word or an everyday (common) word."""
     out = {}
+    blocked = blocklist()
     for n, silly in silly_words().items():
-        out[n] = []
         common = words("common", n)
+        silly_set = set(silly)
+        found = {}
         for s in silly:
-            dist, ways, _ = explore(s, common | set(silly))
-            for t in silly:
-                if (t > s and t in dist and MIN_PAR[n] <= dist[t] <= MAX_PAR[n] and ways[t] >= MIN_ROUTES
-                        and not shared_positions(s, t)):
-                    # confirm with the exact pool the game uses (start/target only, not all silly words)
+            # the game's pool for s->t is common | {s, t}; a common target adds nothing to that,
+            # so one BFS covers every common target, and other silly targets get an exact check
+            dist, ways, _ = explore(s, common | {s})
+            plain = {w for w in common if not plain_word_too_dull(w)}
+            for t in (plain | silly_set) - blocked - {s}:
+                key = frozenset((s, t))
+                if key in found or shared_positions(s, t):
+                    continue
+                if t in common:
+                    ok = t in dist and MIN_PAR[n] <= dist[t] <= MAX_PAR[n] and ways[t] >= MIN_ROUTES
+                    par = dist.get(t)
+                else:
                     r = analyse(s, t)
-                    if not fairness_problems(s, t, r):
-                        out[n].append((s, t, r[0]))
+                    ok = not fairness_problems(s, t, r)
+                    par = r[0] if r else None
+                if ok:
+                    found[key] = (s, t, par, t in silly_set)
+        out[n] = list(found.values())
     return out
+
+
+SILLY_PAIR_WEIGHT = 3  # favour pairs where both words are silly
 
 
 def generate(start_date, end_date, seed=None, existing=()):
@@ -203,10 +233,12 @@ def generate(start_date, end_date, seed=None, existing=()):
         lengths = list(LENGTHS)
         rng.shuffle(lengths)
         for n in lengths:
-            options = [(s, t, par) for s, t, par in pairs_by_len[n]
-                       if frozenset((s, t)) not in used_pairs and uses[s] < MAX_WORD_USES and uses[t] < MAX_WORD_USES]
+            options = [o for o in pairs_by_len[n]
+                       if frozenset(o[:2]) not in used_pairs and uses[o[0]] < MAX_WORD_USES and uses[o[1]] < MAX_WORD_USES]
             if options:
-                s, t, _ = rng.choices(options, weights=[PAR_WEIGHTS[n].get(o[2], 1) for o in options])[0]
+                weights = [PAR_WEIGHTS[n].get(par, 1) * (SILLY_PAIR_WEIGHT if both else 1)
+                           for _, _, par, both in options]
+                s, t, _, _ = rng.choices(options, weights=weights)[0]
                 if rng.random() < 0.5:
                     s, t = t, s
                 break
