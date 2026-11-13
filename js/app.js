@@ -94,6 +94,8 @@ function setupEventListeners() {
   document.getElementById('btn-share-whatsapp').addEventListener('click', handleShareWhatsApp);
   document.getElementById('btn-copy').addEventListener('click', handleCopy);
   document.getElementById('btn-yesterday').addEventListener('click', showYesterday);
+  document.getElementById('btn-theme').addEventListener('click', showTheme);
+  document.getElementById('btn-theme-stats').addEventListener('click', showTheme);
   document.getElementById('btn-yesterday-back').addEventListener('click', () => { hideModals(); updateStatsUI(); showModal('modal-stats'); });
   document.getElementById('btn-sound').addEventListener('click', toggleSound);
   updateSoundButton();
@@ -521,6 +523,11 @@ function renderGrid() {
     grid.appendChild(createRowElement(gameState.currentBuffer, "active"));
   }
 
+  // Give Up has nothing to do once the puzzle is over; drop the controls row if it's then empty
+  document.getElementById('btn-giveup').classList.toggle('hidden', gameState.isGameOver);
+  const controls = document.getElementById('game-controls');
+  controls.classList.toggle('hidden', [...controls.children].every(b => b.classList.contains('hidden')));
+
   const area = document.getElementById('grid-scroll-area');
   area.scrollTop = area.scrollHeight;
 }
@@ -668,6 +675,7 @@ async function playSequence(names) {
   try {
     const buffers = await Promise.all(names.map(decodeSound));
     stopSound();
+    document.getElementById('theme-audio').pause();
     // Schedule every clip up front on the audio clock, so overlaps are sample-accurate
     let at = audioCtx.currentTime + 0.05;
     buffers.forEach((buffer, i) => {
@@ -796,7 +804,27 @@ function showToast(msg, anim = "") {
 }
 
 function showModal(id) { document.getElementById(id).classList.remove('hidden'); }
-function hideModals() { document.querySelectorAll('[id^="modal-"]').forEach(m => m.classList.add('hidden')); }
+function hideModals() {
+  document.querySelectorAll('[id^="modal-"]').forEach(m => m.classList.add('hidden'));
+  document.getElementById('theme-audio').pause();
+}
+
+// --- Turdle Theme ---------------------------------------------------------------
+// The lyrics walk through puzzle #3's answer, so on that day they stay hidden until it's finished.
+const LYRICS_SPOILER_DATE = '2026-11-13';
+
+function themeLyricsLocked() {
+  const date = (document.getElementById('puzzle-date-badge').innerText.match(/\d{4}-\d{2}-\d{2}/) || [''])[0];
+  return gameState.mode === 'daily' && date === LYRICS_SPOILER_DATE && !gameState.result;
+}
+
+function showTheme() {
+  hideModals();
+  const locked = themeLyricsLocked();
+  document.getElementById('theme-lyrics').classList.toggle('hidden', locked);
+  document.getElementById('theme-lyrics-locked').classList.toggle('hidden', !locked);
+  showModal('modal-theme');
+}
 
 function loadStats() {
   const saved = localStorage.getItem('word_ladder_stats');
@@ -830,6 +858,7 @@ function updateStatsUI() {
   document.getElementById('stat-winrate').innerText = `${rate}%`;
   document.getElementById('stat-streak').innerText = userStats.streak;
   document.getElementById('stat-maxstreak').innerText = userStats.maxStreak;
+  document.getElementById('btn-theme-stats').classList.toggle('hidden', !gameState.result);
 }
 
 function buildShareText() {

@@ -59,6 +59,7 @@
           <span aria-hidden="true">📅</span><span id="mode-label" class="hidden sm:inline">Daily</span>
         </button>
         <button id="btn-install" class="btn-3d btn-yellow w-9 h-9 sm:w-10 sm:h-10 text-base hidden" title="Install app" aria-label="Install app">📲</button>
+        <button id="btn-theme" class="btn-3d btn-yellow w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center" title="Turdle Theme" aria-label="Turdle Theme"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24"><path d="M15 19V3c2.5 1.2 5 2.8 5 6.5 0 1.3-.4 2.4-1 3.3.2-2.6-1.6-4.3-4-5" fill="#3b2a1e" stroke="#3b2a1e" stroke-width="1.6" stroke-linejoin="round"/><ellipse cx="9.5" cy="19.6" rx="6" ry="2.7" fill="#8b5a2b"/><ellipse cx="9.5" cy="16.7" rx="4.4" ry="2.2" fill="#9c6634"/><ellipse cx="9.5" cy="14.2" rx="2.8" ry="1.7" fill="#a8723c"/><path d="M8.6 12.9c.4-1.3 1.5-1.9 2.4-2.2-.2.9-.4 1.7-1.2 2.4z" fill="#a8723c"/><path d="M6 19.2c1.5.6 5.5.6 7 0M7.2 16.4c1 .5 3.6.5 4.6 0" stroke="#6b4220" stroke-width=".8" fill="none" stroke-linecap="round"/></svg></button>
         <button id="btn-stats" class="btn-3d btn-yellow w-9 h-9 sm:w-10 sm:h-10 text-base" title="Statistics" aria-label="Statistics">📊</button>
         <button id="btn-help" class="btn-3d btn-yellow w-9 h-9 sm:w-10 sm:h-10 text-base font-bold" title="How to play" aria-label="How to play">?</button>
         <button id="btn-settings" class="btn-3d btn-yellow w-9 h-9 sm:w-10 sm:h-10 text-base" title="Settings & Free Play" aria-label="Settings">⚙️</button>
@@ -170,12 +171,34 @@
       </div>
 
       <div class="space-y-2">
+        <button id="btn-theme-stats" class="btn-3d btn-yellow w-full min-h-12 py-2 px-3 text-sm leading-tight flex items-center justify-center gap-2 hidden"><span aria-hidden="true">🎶</span>Sing along to the Turdle theme!</button>
         <button id="btn-share" class="btn-3d btn-teal w-full h-12 text-base flex items-center justify-center gap-2"><span aria-hidden="true">📤</span>Share Results</button>
         <div class="grid grid-cols-2 gap-2">
           <button id="btn-share-whatsapp" class="btn-3d btn-whatsapp h-11 text-sm flex items-center justify-center gap-2"><span aria-hidden="true">💬</span>WhatsApp</button>
           <button id="btn-copy" class="btn-3d btn-white h-11 text-sm flex items-center justify-center gap-2"><span aria-hidden="true">📋</span>Copy</button>
         </div>
         <button id="btn-yesterday" class="btn-3d btn-white w-full h-11 text-sm flex items-center justify-center gap-2"><span aria-hidden="true">⏪</span>See yesterday's answer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Turdle Theme -->
+  <div id="modal-theme" class="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="modal-card max-w-md w-full p-6 relative max-h-[90vh] flex flex-col">
+      <button class="modal-close btn-3d btn-white absolute top-4 right-4 w-9 h-9 text-sm" aria-label="Close">✕</button>
+      <h3 class="font-display text-2xl font-bold mb-4 pr-10">🎶 The Turdle Theme</h3>
+      <audio id="theme-audio" class="w-full" controls preload="none" src="audio-files/wordle-theme.mp3"></audio>
+      <a href="audio-files/wordle-theme.mp3" download="turdle-theme.mp3" class="btn-3d btn-white mt-3 h-11 text-sm flex items-center justify-center gap-2"><span aria-hidden="true">⬇️</span>Download MP3</a>
+      <div class="text-[11px] font-extrabold uppercase mt-5 mb-2" style="color: var(--ink-soft)">Lyrics</div>
+      <p id="theme-lyrics-locked" class="pill px-4 py-3 text-sm font-bold hidden">🙈 Lyrics unlock when you finish today's puzzle (they're a spoiler!)</p>
+      <div id="theme-lyrics" class="lyrics min-h-0 overflow-y-auto">
+          <p>I was sittin' on the bog wiv me morning cup o' tea<br>Lookin' for a puzzle just to occupy me<br>Forget yer posh Wordle wiv its fancy little squares<br>I found a proper cheeky game that caught me unawares<br>It's made by old Rob Wills and a clever bit of AI<br>A daily word-ladder that'll make ya laugh and cry<br>You start wiv somethin' innocent, you change a single letter<br>And every step you take, mate, it only gets much better</p>
+          <p class="lyrics-chorus">Oh, we're playin' Turdle<br>Yeah, we're goin' Turdle crazy down the boozer by the sea<br>Five little steps to get from A to B<br>It's the rudest, crudest word game that you're ever gonna see</p>
+          <p>Now take a look at number three, the puzzle for today<br>You're startin' off wiv SOCKS, mate, so what ya gonna play<br>You swap the O for I and now you're lookin' rather SICKS<br>Then turn the C into an L, you're gettin' in the SILKS<br>Drop the K to make it SILLS, you're nearly at the end<br>Change the S into a W, you're round the final bend<br>Now you're holdin' onto WILLS, there's just one letter left to go<br>Swap the S out for a Y and—WILLY! What a show</p>
+          <p class="lyrics-chorus">Oh, we're playin' Turdle<br>Yeah, we're goin' Turdle crazy, it's a proper knees-up spree<br>Five steps to glory, par is on the screen<br>The cheekiest vocabulary that there's ever been</p>
+          <p>Now don't you press that 'Give Up' button, keep yer pecker up<br>Even if you're stuck inside a right ol' buttercup<br>From Fanny down to Bum, or from Knackers up to Poo<br>It's the sort of filth yer nan would love—'Wasn't me, it was you'</p>
+          <p class="lyrics-chorus">Oh, we're playin' Turdle<br>Yeah, we're goin' Turdle crazy, it's a proper knees-up spree<br>Five steps to glory, par is on the screen<br>The cheekiest vocabulary that there's ever been</p>
+          <p>So when yer on the throne and you've got five minutes free<br>Load up Turdle on yer phone and sing along wiv me<br>Start wiv SOCKS... end wiv WILLY<br>Cor, ain't life bleedin' silly</p>
       </div>
     </div>
   </div>

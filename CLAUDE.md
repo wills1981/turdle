@@ -22,6 +22,9 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
   Players can mute from the stats window (🔊/🔇, saved as `turdle-sound`).
 - "See yesterday's answer" (stats window) shows yesterday's par route, plus the player's own ladder from
   `turdle-past` (localStorage, last 7 daily games). Never reset `word_ladder_stats` or `turdle-progress`: they hold streaks.
+- Turdle Theme (header poo-quaver button, and the stats window once finished): plays/downloads
+  `audio-files/wordle-theme.mp3`, with the lyrics written into `index.html`. The lyrics spell out puzzle #3's answer,
+  so on that day only (`LYRICS_SPOILER_DATE`) they stay hidden until the puzzle is finished.
 - `project_generator.py` is stale (old tiny word lists, old README). Don't run it, as it would overwrite the project.
 
 ## Populating puzzles.txt
