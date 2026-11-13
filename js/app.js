@@ -599,7 +599,7 @@ function handlePhysicalKeyboard(e) {
 // Web Audio, unlocked during the tap/keypress that ends the game, so iOS allows the
 // delayed playback. Any failure is silent: sound must never break the game.
 const SOUND_FILES = {
-  'on-par-sound': 'audio-files/on-par-sound.mp3',
+  'on-par-sound': 'audio-files/fanfare.mp3',
   'on-par-speech': 'audio-files/on-par-speech.mp3',
   'over-par-sound': 'audio-files/over-par-sound.m4a',
   'over-par-speech': 'audio-files/over-par-speech.mp3',
@@ -610,7 +610,6 @@ const SOUND_KEY = 'turdle-sound';
 let audioCtx = null;
 const soundData = {};    // name -> Promise<ArrayBuffer>
 const soundBuffers = {}; // name -> Promise<AudioBuffer>
-let currentSource = null;
 
 function soundOn() {
   try { return localStorage.getItem(SOUND_KEY) !== 'off'; } catch (e) { return true; }
@@ -656,29 +655,43 @@ function preloadSounds() {
   setTimeout(() => Object.keys(SOUND_FILES).forEach(n => fetchSound(n).catch(() => {})), 1500);
 }
 
+// Clips whose tail overlaps the next clip: the next one starts `next` seconds in, and this
+// one fades to `duck` of its volume so it sits under the speech. The fanfare is loud until
+// ~3.5s, then fades out (silent from ~5.5s); speech is ~-19 dB, the ducked tail ~-30 dB.
+const SOUND_OVERLAP = {
+  'on-par-sound': { next: 4.0, duck: 0.3 }
+};
+let currentSources = [];
+
 async function playSequence(names) {
   if (!soundOn() || !audioCtx) return;
   try {
     const buffers = await Promise.all(names.map(decodeSound));
     stopSound();
-    let i = 0;
-    const next = () => {
-      if (i >= buffers.length || !soundOn()) { currentSource = null; return; }
+    // Schedule every clip up front on the audio clock, so overlaps are sample-accurate
+    let at = audioCtx.currentTime + 0.05;
+    buffers.forEach((buffer, i) => {
       const src = audioCtx.createBufferSource();
-      src.buffer = buffers[i++];
-      src.connect(audioCtx.destination);
-      src.onended = () => { if (currentSource === src) next(); };
-      currentSource = src;
-      src.start();
-    };
-    next();
+      const gain = audioCtx.createGain();
+      src.buffer = buffer;
+      src.connect(gain).connect(audioCtx.destination);
+      const overlap = i < buffers.length - 1 && SOUND_OVERLAP[names[i]];
+      const nextAt = at + (overlap ? overlap.next : buffer.duration);
+      if (overlap) {
+        gain.gain.setValueAtTime(1, nextAt);
+        gain.gain.linearRampToValueAtTime(overlap.duck, nextAt + 0.3);
+      }
+      src.start(at);
+      currentSources.push(src);
+      at = nextAt;
+    });
   } catch (e) { /* missing or undecodable file: stay quiet */ }
 }
 
 function stopSound() {
-  const src = currentSource;
-  currentSource = null;
-  try { if (src) src.stop(); } catch (e) { /* already stopped */ }
+  const sources = currentSources;
+  currentSources = [];
+  sources.forEach(src => { try { src.stop(); } catch (e) { /* already stopped */ } });
 }
 
 function updateSoundButton() {

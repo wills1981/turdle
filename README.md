@@ -17,6 +17,16 @@ docker build -t turdle .
 docker run --rm -p 8080:80 turdle
 ```
 
+### Replaying today's puzzle while testing
+
+Today's game is saved in the browser, so a finished puzzle stays finished. To clear just today's input, run this in the DevTools console (Cmd+Option+J) on http://localhost:8080:
+
+```js
+localStorage.removeItem('turdle-progress'); location.reload();
+```
+
+Stats and streak (`word_ladder_stats`) are kept, but each replay adds to them. Localhost and the live site keep separate storage, so this never touches your real streak.
+
 ## 📖 Dictionaries
 
 Word lists come from [SCOWL](http://wordlist.aspell.net/) (British English, including Oxford `-ize` spellings), licensed as described in [dictionaries/LICENSE-SCOWL.txt](dictionaries/LICENSE-SCOWL.txt).
