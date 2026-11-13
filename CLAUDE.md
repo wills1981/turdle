@@ -22,6 +22,8 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
   Players can mute from the stats window (🔊/🔇, saved as `turdle-sound`).
 - "See yesterday's answer" (stats window) shows yesterday's par route, plus the player's own ladder from
   `turdle-past` (localStorage, last 7 daily games). Never reset `word_ladder_stats` or `turdle-progress`: they hold streaks.
+- Releasing a change to `js/app.js` or `css/styles.css`: bump the `?v=` on their tags in `index.html`, so an
+  installed app never runs a new page against an old cached script. `sw.js` revalidates our own files on every load.
 - Turdle Theme (header poo-quaver button, and the stats window once finished): plays/downloads
   `audio-files/wordle-theme.mp3`, with the lyrics written into `index.html`. The lyrics spell out puzzle #3's answer,
   so on that day only (`LYRICS_SPOILER_DATE`) they stay hidden until the puzzle is finished.

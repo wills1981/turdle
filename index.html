@@ -40,7 +40,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- Custom Stylesheet (theme) -->
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=2">
 </head>
 <body class="app-shell flex flex-col antialiased">
 
@@ -283,6 +283,7 @@
     </div>
   </div>
 
-  <script src="js/app.js"></script>
+  <!-- Bump ?v= with each release so the page never runs against an older cached script -->
+  <script src="js/app.js?v=2"></script>
 </body>
 </html>
