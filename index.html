@@ -147,6 +147,7 @@
   <div id="modal-stats" class="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="modal-card max-w-md w-full p-6 relative">
       <button class="modal-close btn-3d btn-white absolute top-4 right-4 w-9 h-9 text-sm" aria-label="Close">✕</button>
+      <button id="btn-sound" class="btn-3d btn-white absolute top-4 right-14 w-9 h-9 text-sm" title="Sound on (tap to mute)" aria-label="Sound on (tap to mute)">🔊</button>
       <h3 class="font-display text-2xl font-bold mb-4">Statistics</h3>
 
       <div class="grid grid-cols-4 gap-2 mb-5 text-center">
@@ -174,7 +175,32 @@
           <button id="btn-share-whatsapp" class="btn-3d btn-whatsapp h-11 text-sm flex items-center justify-center gap-2"><span aria-hidden="true">💬</span>WhatsApp</button>
           <button id="btn-copy" class="btn-3d btn-white h-11 text-sm flex items-center justify-center gap-2"><span aria-hidden="true">📋</span>Copy</button>
         </div>
+        <button id="btn-yesterday" class="btn-3d btn-white w-full h-11 text-sm flex items-center justify-center gap-2"><span aria-hidden="true">⏪</span>See yesterday's answer</button>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Yesterday's answer -->
+  <div id="modal-yesterday" class="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="modal-card max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
+      <button class="modal-close btn-3d btn-white absolute top-4 right-4 w-9 h-9 text-sm" aria-label="Close">✕</button>
+      <h3 id="yesterday-title" class="font-display text-2xl font-bold">Yesterday</h3>
+      <p id="yesterday-pair" class="font-display font-semibold mb-4" style="color: var(--rust)"></p>
+
+      <div id="yesterday-mine" class="hidden mb-5">
+        <div class="text-[11px] font-extrabold uppercase mb-1" style="color: var(--ink-soft)">Your ladder</div>
+        <div id="yesterday-mine-verdict" class="font-bold text-sm mb-2"></div>
+        <div id="yesterday-mine-ladder"></div>
+      </div>
+
+      <div id="yesterday-route-wrap">
+        <div id="yesterday-route-label" class="text-[11px] font-extrabold uppercase mb-2" style="color: var(--ink-soft)">Par route</div>
+        <div id="yesterday-route"></div>
+      </div>
+
+      <p id="yesterday-note" class="hidden text-sm font-bold mt-4" style="color: var(--ink-soft)"></p>
+
+      <button id="btn-yesterday-back" class="btn-3d btn-teal mt-5 w-full h-11 text-base">Back to stats</button>
     </div>
   </div>
 

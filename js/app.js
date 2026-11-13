@@ -54,6 +54,7 @@ window.onload = async () => {
   buildKeyboardUI();
   setupEventListeners();
   await loadPuzzleMode('daily');
+  preloadSounds();
 };
 
 function applyFeatureFlags() {
@@ -92,6 +93,10 @@ function setupEventListeners() {
   document.getElementById('btn-share').addEventListener('click', handleShare);
   document.getElementById('btn-share-whatsapp').addEventListener('click', handleShareWhatsApp);
   document.getElementById('btn-copy').addEventListener('click', handleCopy);
+  document.getElementById('btn-yesterday').addEventListener('click', showYesterday);
+  document.getElementById('btn-yesterday-back').addEventListener('click', () => { hideModals(); updateStatsUI(); showModal('modal-stats'); });
+  document.getElementById('btn-sound').addEventListener('click', toggleSound);
+  updateSoundButton();
   // Native share sheet (WhatsApp, Messages, etc.) is mainly available on mobile
   if (!navigator.share) document.getElementById('btn-share').classList.add('hidden');
   
@@ -119,6 +124,14 @@ function puzzleNumber(dateStr) {
   return Math.round((day(dateStr) - day(FIRST_PUZZLE_DATE)) / 86400000) + 1;
 }
 
+// Every line of puzzles.txt by date (filled by loadPuzzleMode), used by the yesterday view
+let scheduleByDate = {};
+
+// The daily pair for a date: puzzles.txt, else the built-in fallback schedule
+function pairForDate(dateStr) {
+  return scheduleByDate[dateStr] || DEFAULT_SCHEDULE[Math.abs(hashCode(dateStr)) % DEFAULT_SCHEDULE.length];
+}
+
 // Data Fetching & Loaders
 async function loadPuzzleMode(mode) {
   gameState.mode = mode;
@@ -139,20 +152,15 @@ async function loadPuzzleMode(mode) {
         const lines = txt.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
         for (const line of lines) {
           const [d, s, t] = line.split('|');
-          if (d === todayStr) {
-            dailyPair = { start: s.toUpperCase(), target: t.toUpperCase() };
-            break;
-          }
+          if (d && s && t) scheduleByDate[d] = { start: s.trim().toUpperCase(), target: t.trim().toUpperCase() };
         }
+        dailyPair = scheduleByDate[todayStr] || null;
       }
     } catch (e) {
       console.log("Using built-in puzzle schedule");
     }
 
-    if (!dailyPair) {
-      const dayIdx = Math.abs(hashCode(todayStr)) % DEFAULT_SCHEDULE.length;
-      dailyPair = DEFAULT_SCHEDULE[dayIdx];
-    }
+    if (!dailyPair) dailyPair = pairForDate(todayStr);
 
     gameState.startWord = dailyPair.start;
     gameState.targetWord = dailyPair.target;
@@ -263,10 +271,10 @@ function distancesFrom(start, dictSet) {
 
 // Prefer routes through everyday words; fall back to the full list so puzzles with
 // obscure start/target words (or an obscure word the player has typed) still solve.
-function findRoute(from, target) {
-  const viaCommon = solveBFS(from, target, gameState.commonWords);
+function findRoute(from, target, common = gameState.commonWords, valid = gameState.validWords) {
+  const viaCommon = solveBFS(from, target, common);
   if (viaCommon.paths.length > 0) return viaCommon;
-  return solveBFS(from, target, gameState.validWords);
+  return solveBFS(from, target, valid);
 }
 
 function isOneDiff(a, b) {
@@ -308,6 +316,7 @@ function handleKeyInput(key) {
 }
 
 function submitWord() {
+  unlockAudio();
   const word = gameState.currentBuffer;
   if (word.length !== gameState.wordLength) {
     showToast("Not enough letters", "shake");
@@ -346,7 +355,10 @@ function submitWord() {
 
     recordWin(diff);
     showToast(`🎉 Puzzle Complete! ${msg}`, "pop");
-    setTimeout(() => { showModal('modal-stats'); updateStatsUI(); }, 1200);
+    setTimeout(() => {
+      showModal('modal-stats'); updateStatsUI();
+      playSequence(diff <= 0 ? ['on-par-sound', 'on-par-speech'] : ['over-par-sound', 'over-par-speech']);
+    }, 1200);
   }
 }
 
@@ -393,9 +405,39 @@ function saveProgress() {
       result: gameState.result
     }));
   } catch (e) { /* storage unavailable (private mode etc.): just don't persist */ }
+  if (gameState.mode === 'daily') archiveGame(puzzleId(), gameState.history, gameState.result);
+}
+
+// --- Past daily games (for "yesterday's answer") ------------------------------
+// A separate key, so turdle-progress and the stats are never touched. Keeps the last 7 days.
+const PAST_KEY = 'turdle-past';
+
+function loadPast() {
+  try { return JSON.parse(localStorage.getItem(PAST_KEY)) || {}; } catch (e) { return {}; }
+}
+
+function archiveGame(id, history, result) {
+  const [mode, date, start, target] = (id || '').split('|');
+  if (mode !== 'daily' || !/^\d{4}-\d{2}-\d{2}$/.test(date) || !Array.isArray(history)) return;
+  try {
+    const past = loadPast();
+    past[date] = { start, target, history, result: result || null };
+    for (const d of Object.keys(past).sort().slice(0, -7)) delete past[d];
+    localStorage.setItem(PAST_KEY, JSON.stringify(past));
+  } catch (e) { /* storage unavailable: no history */ }
+}
+
+// Copy whatever turdle-progress holds into the archive (e.g. yesterday's game, before today's
+// first keypress replaces it). Read-only on turdle-progress itself.
+function archiveSavedProgress() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PROGRESS_KEY));
+    if (saved) archiveGame(saved.id, saved.history, saved.result);
+  } catch (e) { /* nothing saved */ }
 }
 
 function restoreProgress() {
+  archiveSavedProgress();
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem(PROGRESS_KEY)); } catch (e) { return; }
   if (!saved || saved.id !== puzzleId() || !Array.isArray(saved.history) || saved.history[0] !== gameState.startWord) return;
@@ -432,6 +474,7 @@ function resetGiveUp() {
 
 function handleGiveUpTap() {
   if (gameState.isGameOver) return;
+  unlockAudio();
   clearTimeout(giveUpTimer);
   giveUpStage++;
   if (giveUpStage >= GIVEUP_STAGES.length) {
@@ -458,7 +501,10 @@ function handleGiveUp() {
   recordLoss();
   updateStepCounter();
   renderGrid();
-  setTimeout(() => { showModal('modal-stats'); updateStatsUI(); }, 2500);
+  setTimeout(() => {
+    showModal('modal-stats'); updateStatsUI();
+    playSequence(['give-up-sound', 'give-up-speech']);
+  }, 2500);
 }
 
 // UI Rendering
@@ -479,11 +525,11 @@ function renderGrid() {
   area.scrollTop = area.scrollHeight;
 }
 
-function createRowElement(wordStr, type) {
+function createRowElement(wordStr, type, target = gameState.targetWord, length = gameState.wordLength) {
   const row = document.createElement('div');
   row.className = "flex gap-2 justify-center w-full" + (type === "active" ? "" : " animate-pop");
 
-  for (let i = 0; i < gameState.wordLength; i++) {
+  for (let i = 0; i < length; i++) {
     const char = wordStr[i] || "";
     const tile = document.createElement('div');
     let cls = "tile";
@@ -492,7 +538,7 @@ function createRowElement(wordStr, type) {
       cls += " tile-target";
     } else if (type === "start" || type === "history") {
       // Highlight letters already matching the target in the same position (progress)
-      if (char && char === gameState.targetWord[i]) cls += " tile-match";
+      if (char && char === target[i]) cls += " tile-match";
     } else if (type === "active") {
       if (char) cls += " tile-typed";
       else cls += i === wordStr.length ? " tile-empty tile-cursor" : " tile-empty";
@@ -546,6 +592,184 @@ function handlePhysicalKeyboard(e) {
   if (e.key === 'Backspace' || e.key === 'Delete') handleKeyInput('BACKSPACE');
   else if (e.key === 'Enter') handleKeyInput('ENTER');
   else if (/^[a-zA-Z]$/.test(e.key)) handleKeyInput(e.key.toUpperCase());
+}
+
+// --- Sounds ------------------------------------------------------------------
+// Played when the stats window opens at the end of a game: an effect, then speech.
+// Web Audio, unlocked during the tap/keypress that ends the game, so iOS allows the
+// delayed playback. Any failure is silent: sound must never break the game.
+const SOUND_FILES = {
+  'on-par-sound': 'audio-files/on-par-sound.mp3',
+  'on-par-speech': 'audio-files/on-par-speech.mp3',
+  'over-par-sound': 'audio-files/over-par-sound.m4a',
+  'over-par-speech': 'audio-files/over-par-speech.mp3',
+  'give-up-sound': 'audio-files/give-up-sound.mp3',
+  'give-up-speech': 'audio-files/give-up-speech.mp3'
+};
+const SOUND_KEY = 'turdle-sound';
+let audioCtx = null;
+const soundData = {};    // name -> Promise<ArrayBuffer>
+const soundBuffers = {}; // name -> Promise<AudioBuffer>
+let currentSource = null;
+
+function soundOn() {
+  try { return localStorage.getItem(SOUND_KEY) !== 'off'; } catch (e) { return true; }
+}
+
+function unlockAudio() {
+  if (!soundOn()) return;
+  try {
+    if (!audioCtx) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      audioCtx = new Ctx();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    // A silent one-sample buffer, played inside the gesture, unlocks iOS
+    const src = audioCtx.createBufferSource();
+    src.buffer = audioCtx.createBuffer(1, 1, 22050);
+    src.connect(audioCtx.destination);
+    src.start(0);
+  } catch (e) { /* no audio */ }
+}
+
+function fetchSound(name) {
+  if (!soundData[name]) {
+    soundData[name] = fetch(SOUND_FILES[name]).then(r => (r.ok ? r.arrayBuffer() : Promise.reject()));
+    soundData[name].catch(() => delete soundData[name]); // allow a retry later
+  }
+  return soundData[name];
+}
+
+function decodeSound(name) {
+  if (!soundBuffers[name]) {
+    // decodeAudioData detaches the ArrayBuffer, so decode a copy
+    soundBuffers[name] = fetchSound(name).then(data => new Promise((ok, fail) =>
+      audioCtx.decodeAudioData(data.slice(0), ok, fail)));
+    soundBuffers[name].catch(() => delete soundBuffers[name]);
+  }
+  return soundBuffers[name];
+}
+
+// Download (not decode: that needs the AudioContext) once the game has loaded
+function preloadSounds() {
+  setTimeout(() => Object.keys(SOUND_FILES).forEach(n => fetchSound(n).catch(() => {})), 1500);
+}
+
+async function playSequence(names) {
+  if (!soundOn() || !audioCtx) return;
+  try {
+    const buffers = await Promise.all(names.map(decodeSound));
+    stopSound();
+    let i = 0;
+    const next = () => {
+      if (i >= buffers.length || !soundOn()) { currentSource = null; return; }
+      const src = audioCtx.createBufferSource();
+      src.buffer = buffers[i++];
+      src.connect(audioCtx.destination);
+      src.onended = () => { if (currentSource === src) next(); };
+      currentSource = src;
+      src.start();
+    };
+    next();
+  } catch (e) { /* missing or undecodable file: stay quiet */ }
+}
+
+function stopSound() {
+  const src = currentSource;
+  currentSource = null;
+  try { if (src) src.stop(); } catch (e) { /* already stopped */ }
+}
+
+function updateSoundButton() {
+  const on = soundOn();
+  const btn = document.getElementById('btn-sound');
+  btn.innerText = on ? '🔊' : '🔇';
+  btn.title = on ? 'Sound on (tap to mute)' : 'Sound off (tap to unmute)';
+  btn.setAttribute('aria-label', btn.title);
+}
+
+function toggleSound() {
+  const on = !soundOn();
+  try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off'); } catch (e) { /* not remembered */ }
+  if (on) unlockAudio(); else stopSound();
+  updateSoundButton();
+}
+
+// --- Yesterday's answer --------------------------------------------------------
+const wordListCache = {}; // length -> { common, valid }
+
+async function wordSetsFor(length) {
+  // Own copies, so yesterday's start/target never become valid guesses today
+  if (!wordListCache[length]) {
+    let [valid, common] = await Promise.all([
+      fetchWordList(`dictionaries/dictionary-${length}.txt`, length),
+      fetchWordList(`dictionaries/common-${length}.txt`, length)
+    ]);
+    if (valid.length === 0) valid = EMBEDDED_WORDS[length] || [];
+    if (common.length === 0) common = valid;
+    wordListCache[length] = { common: new Set(common), valid: new Set([...valid, ...common]) };
+  }
+  return wordListCache[length];
+}
+
+function ladderElement(words, target) {
+  const box = document.createElement('div');
+  box.className = 'yesterday-ladder flex flex-col items-center gap-1.5';
+  words.forEach((w, idx) => {
+    const type = w === target && idx > 0 ? 'target' : 'history';
+    const row = createRowElement(w, type, target, target.length);
+    row.classList.remove('animate-pop');
+    box.appendChild(row);
+  });
+  return box;
+}
+
+async function showYesterday() {
+  const today = new Date().toISOString().split('T')[0];
+  const date = new Date(Date.parse(today + 'T00:00:00Z') - 86400000).toISOString().split('T')[0];
+  const el = id => document.getElementById(id);
+  hideModals();
+  showModal('modal-yesterday');
+
+  if (puzzleNumber(date) < 1) {
+    el('yesterday-title').innerText = 'Yesterday';
+    el('yesterday-pair').innerText = '';
+    el('yesterday-mine').classList.add('hidden');
+    el('yesterday-route-wrap').classList.add('hidden');
+    el('yesterday-note').innerText = 'There was no puzzle yesterday. Come back tomorrow!';
+    el('yesterday-note').classList.remove('hidden');
+    return;
+  }
+
+  const { start, target } = pairForDate(date);
+  el('yesterday-title').innerText = `Yesterday · #${puzzleNumber(date)}`;
+  el('yesterday-pair').innerText = `${start} ➔ ${target}  (${date})`;
+  el('yesterday-route').innerHTML = '<div class="text-sm font-bold" style="color: var(--ink-soft)">Working it out…</div>';
+  el('yesterday-route-wrap').classList.remove('hidden');
+
+  const mine = loadPast()[date];
+  const played = mine && mine.start === start && mine.target === target && mine.history.length > 1;
+  el('yesterday-note').classList.toggle('hidden', played);
+  el('yesterday-note').innerText = 'No game recorded for yesterday on this device.';
+
+  const { common, valid } = await wordSetsFor(start.length);
+  valid.add(start); valid.add(target);
+  const route = findRoute(start, target, common, valid);
+  const par = route.optimalSteps;
+
+  el('yesterday-mine').classList.toggle('hidden', !played);
+  if (played) {
+    const steps = mine.history.length - 1;
+    const verdict = mine.result === 'won'
+      ? `Solved in ${steps} step${steps === 1 ? '' : 's'}${par === null ? '' : steps <= par ? ' ⛳ on par!' : ` (par ${par})`}`
+      : mine.result === 'gaveup' ? `Gave up after ${steps} step${steps === 1 ? '' : 's'} 💩`
+      : `Didn't finish (${steps} step${steps === 1 ? '' : 's'})`;
+    el('yesterday-mine-verdict').innerText = verdict;
+    el('yesterday-mine-ladder').replaceChildren(ladderElement(mine.history, target));
+  }
+  el('yesterday-route-label').innerText = par === null ? 'No route found' : `Par route · ${par} steps`;
+  el('yesterday-route').replaceChildren(route.paths.length ? ladderElement(route.paths[0], target) : '');
 }
 
 // Helpers & Analytics

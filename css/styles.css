@@ -85,6 +85,10 @@ body {
 .tile-cursor  { border-style: solid; border-color: var(--teal); border-bottom-width: 5px; border-bottom-color: var(--teal-dark); animation: pulse-cursor 1.2s ease-in-out infinite; }
 @keyframes pulse-cursor { 50% { box-shadow: 0 0 0 4px rgba(26,165,138,.18); } }
 
+/* Smaller tiles for the ladders in the yesterday modal, so 6 letters fit on a phone */
+.yesterday-ladder .flex { gap: .35rem; }
+.yesterday-ladder .tile { width: 38px; height: 38px; font-size: 1.05rem; border-radius: 10px; border-bottom-width: 4px; }
+
 /* Word chips in the start/target card */
 .word-chip {
   font-family: 'Fredoka', 'Nunito', system-ui, sans-serif;
