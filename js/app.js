@@ -96,7 +96,7 @@ function setupEventListeners() {
   document.getElementById('btn-yesterday').addEventListener('click', showYesterday);
   document.getElementById('btn-next-ready').addEventListener('click', () => location.reload());
   document.getElementById('btn-theme').addEventListener('click', showTheme);
-  document.getElementById('btn-theme-stats').addEventListener('click', showTheme);
+  // document.getElementById('btn-theme-stats').addEventListener('click', showTheme);
   document.getElementById('btn-yesterday-back').addEventListener('click', () => { hideModals(); updateStatsUI(); showModal('modal-stats'); });
   document.getElementById('btn-sound').addEventListener('click', toggleSound);
   updateSoundButton();
@@ -895,7 +895,7 @@ function updateStatsUI() {
   document.getElementById('stat-winrate').innerText = `${rate}%`;
   document.getElementById('stat-streak').innerText = userStats.streak;
   document.getElementById('stat-maxstreak').innerText = userStats.maxStreak;
-  document.getElementById('btn-theme-stats').classList.toggle('hidden', !gameState.result);
+  // document.getElementById('btn-theme-stats').classList.toggle('hidden', !gameState.result);
   startCountdown();
 }
 
