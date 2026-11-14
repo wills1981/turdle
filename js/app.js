@@ -375,7 +375,7 @@ function submitWord() {
     showToast(`🎉 Puzzle Complete! ${msg}`, "pop");
     setTimeout(() => {
       showModal('modal-stats'); updateStatsUI();
-      playSequence(diff <= 0 ? ['on-par-sound', 'on-par-speech'] : ['over-par-sound', 'over-par-speech']);
+      playSequence(diff <= 0 ? ['on-par'] : ['over-par-sound', 'over-par-speech']);
     }, 1200);
   }
 }
@@ -618,12 +618,11 @@ function handlePhysicalKeyboard(e) {
 }
 
 // --- Sounds ------------------------------------------------------------------
-// Played when the stats window opens at the end of a game: an effect, then speech.
+// Played when the stats window opens at the end of a game: on par one clip, otherwise an effect, then speech.
 // Web Audio, unlocked during the tap/keypress that ends the game, so iOS allows the
 // delayed playback. Any failure is silent: sound must never break the game.
 const SOUND_FILES = {
-  'on-par-sound': 'audio-files/fanfare.mp3',
-  'on-par-speech': 'audio-files/on-par-speech.mp3',
+  'on-par': 'audio-files/you-cracked-the-code.mp3',
   'over-par-sound': 'audio-files/over-par-sound.m4a',
   'over-par-speech': 'audio-files/over-par-speech.mp3',
   'give-up-sound': 'audio-files/give-up-sound.mp3',
@@ -679,11 +678,8 @@ function preloadSounds() {
 }
 
 // Clips whose tail overlaps the next clip: the next one starts `next` seconds in, and this
-// one fades to `duck` of its volume so it sits under the speech. The fanfare is loud until
-// ~3.5s, then fades out (silent from ~5.5s); speech is ~-19 dB, the ducked tail ~-30 dB.
-const SOUND_OVERLAP = {
-  'on-par-sound': { next: 4.0, duck: 0.3 }
-};
+// one fades to `duck` of its volume so it sits under the speech, e.g. { next: 4.0, duck: 0.3 }.
+const SOUND_OVERLAP = {};
 let currentSources = [];
 
 async function playSequence(names) {
