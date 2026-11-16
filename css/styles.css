@@ -159,3 +159,11 @@ button { touch-action: manipulation; -webkit-touch-callout: none; }
   .word-chip { font-size: 1.2rem !important; padding: .05rem .7rem !important; }
   #grid-scroll-area { margin-top: .5rem !important; margin-bottom: .5rem !important; }
 }
+
+/* End-of-game crooner banner in the stats window: tap to replay its clip */
+.end-banner { position: relative; display: block; width: 100%; padding: 0; border: 0; background: none; border-radius: 16px; overflow: hidden; cursor: pointer; transition: transform .1s; }
+.end-banner img { display: block; width: 100%; height: auto; }
+.end-banner:active:not(:disabled) { transform: scale(.98); }
+.end-banner:disabled { cursor: default; }
+.end-banner-play { position: absolute; left: 7px; bottom: 7px; width: 26px; height: 26px; border-radius: 50%; background: rgba(0,0,0,.6); box-shadow: 0 0 0 2px rgba(255,255,255,.8); color: #fff; font-size: 11px; line-height: 26px; text-align: center; padding-left: 2px; pointer-events: none; }
+.end-banner:disabled .end-banner-play { display: none; }

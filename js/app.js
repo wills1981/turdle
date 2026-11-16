@@ -54,7 +54,6 @@ window.onload = async () => {
   buildKeyboardUI();
   setupEventListeners();
   await loadPuzzleMode('daily');
-  preloadSounds();
 };
 
 function applyFeatureFlags() {
@@ -99,6 +98,7 @@ function setupEventListeners() {
   // document.getElementById('btn-theme-stats').addEventListener('click', showTheme);
   document.getElementById('btn-yesterday-back').addEventListener('click', () => { hideModals(); updateStatsUI(); showModal('modal-stats'); });
   document.getElementById('btn-sound').addEventListener('click', toggleSound);
+  document.getElementById('end-banner').addEventListener('click', replayEndSound);
   updateSoundButton();
   // Native share sheet (WhatsApp, Messages, etc.) is mainly available on mobile
   if (!navigator.share) document.getElementById('btn-share').classList.add('hidden');
@@ -355,6 +355,7 @@ function submitWord() {
 
   gameState.history.push(word);
   gameState.currentBuffer = "";
+  preloadSounds();
   saveProgress();
   renderGrid();
   updateStepCounter();
@@ -370,12 +371,13 @@ function submitWord() {
 
     let msg = "Perfect!";
     if (diff > 0) msg = `${diff} step(s) over par!`;
+    else if (diff < 0) msg = `${-diff} step(s) under par!`;
 
     recordWin(diff);
     showToast(`🎉 Puzzle Complete! ${msg}`, "pop");
     setTimeout(() => {
       showModal('modal-stats'); updateStatsUI();
-      playSequence(diff <= 0 ? ['on-par'] : ['over-par-sound', 'over-par-speech']);
+      playSequence([endState()]);
     }, 1200);
   }
 }
@@ -521,7 +523,7 @@ function handleGiveUp() {
   renderGrid();
   setTimeout(() => {
     showModal('modal-stats'); updateStatsUI();
-    playSequence(['give-up-sound', 'give-up-speech']);
+    playSequence([endState()]);
   }, 2500);
 }
 
@@ -621,13 +623,30 @@ function handlePhysicalKeyboard(e) {
 // Played when the stats window opens at the end of a game: on par one clip, otherwise an effect, then speech.
 // Web Audio, unlocked during the tap/keypress that ends the game, so iOS allows the
 // delayed playback. Any failure is silent: sound must never break the game.
+// One clip and one banner (shown in the stats window, tap to replay) per end state; see endState().
 const SOUND_FILES = {
-  'on-par': 'audio-files/you-cracked-the-code.mp3',
-  'over-par-sound': 'audio-files/over-par-sound.m4a',
-  'over-par-speech': 'audio-files/over-par-speech.mp3',
-  'give-up-sound': 'audio-files/give-up-sound.mp3',
-  'give-up-speech': 'audio-files/give-up-speech.mp3'
+  over: 'audio-files/too-many-turns.mp3',
+  under: 'audio-files/under-par.mp3',
+  par: 'audio-files/thats-an-on-par-turdle.mp3',
+  gaveup: 'audio-files/you-gave-up.mp3'
 };
+const BANNER_FILES = {
+  over: { src: 'turdle-crooner-banners/1-too-many-turns.png', alt: 'Too many turns' },
+  under: { src: 'turdle-crooner-banners/2-under-par.png', alt: 'Under par' },
+  par: { src: 'turdle-crooner-banners/3-on-par.png', alt: 'On par' },
+  gaveup: { src: 'turdle-crooner-banners/4-gave-up.png', alt: 'Gave up' }
+};
+
+// 'over' | 'under' | 'par' | 'gaveup' once the puzzle has ended, else null.
+// Under par is possible: guesses may use the full dictionary, par only everyday words.
+function endState() {
+  if (gameState.result === 'gaveup') return 'gaveup';
+  if (gameState.result !== 'won') return null;
+  const par = gameState.parMoves;
+  if (par === null || par === undefined) return 'par';
+  const diff = gameState.history.length - 1 - par;
+  return diff > 0 ? 'over' : diff < 0 ? 'under' : 'par';
+}
 const SOUND_KEY = 'turdle-sound';
 let audioCtx = null;
 const soundData = {};    // name -> Promise<ArrayBuffer>
@@ -637,8 +656,8 @@ function soundOn() {
   try { return localStorage.getItem(SOUND_KEY) !== 'off'; } catch (e) { return true; }
 }
 
-function unlockAudio() {
-  if (!soundOn()) return;
+function unlockAudio(force = false) {
+  if (!force && !soundOn()) return;
   try {
     if (!audioCtx) {
       const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -672,9 +691,13 @@ function decodeSound(name) {
   return soundBuffers[name];
 }
 
-// Download (not decode: that needs the AudioContext) once the game has loaded
+// Download (not decode: that needs the AudioContext) once the player makes a first move.
+// The clips are ~2 MB each, so a visit that never plays doesn't pay for them.
+let soundsPreloaded = false;
 function preloadSounds() {
-  setTimeout(() => Object.keys(SOUND_FILES).forEach(n => fetchSound(n).catch(() => {})), 1500);
+  if (soundsPreloaded || !soundOn()) return;
+  soundsPreloaded = true;
+  Object.keys(SOUND_FILES).forEach(n => fetchSound(n).catch(() => {}));
 }
 
 // Clips whose tail overlaps the next clip: the next one starts `next` seconds in, and this
@@ -682,11 +705,18 @@ function preloadSounds() {
 const SOUND_OVERLAP = {};
 let currentSources = [];
 
-async function playSequence(names) {
-  if (!soundOn() || !audioCtx) return;
+let playToken = 0;
+
+async function playSequence(names, force = false) {
+  if ((!force && !soundOn()) || !audioCtx || names.some(n => !SOUND_FILES[n])) return;
+  const token = ++playToken;
+  setBannerBusy(true);
   try {
     const buffers = await Promise.all(names.map(decodeSound));
+    if (token !== playToken) return;
     stopSound();
+    playToken = token; // stopSound bumps it and frees the banner
+    setBannerBusy(true);
     document.getElementById('theme-audio').pause();
     // Schedule every clip up front on the audio clock, so overlaps are sample-accurate
     let at = audioCtx.currentTime + 0.05;
@@ -701,17 +731,45 @@ async function playSequence(names) {
         gain.gain.setValueAtTime(1, nextAt);
         gain.gain.linearRampToValueAtTime(overlap.duck, nextAt + 0.3);
       }
+      if (i === buffers.length - 1) src.onended = () => { if (token === playToken) setBannerBusy(false); };
       src.start(at);
       currentSources.push(src);
       at = nextAt;
     });
-  } catch (e) { /* missing or undecodable file: stay quiet */ }
+  } catch (e) { /* missing or undecodable file: stay quiet */
+    if (token === playToken) setBannerBusy(false);
+  }
 }
 
 function stopSound() {
+  playToken++;
+  setBannerBusy(false);
   const sources = currentSources;
   currentSources = [];
   sources.forEach(src => { try { src.stop(); } catch (e) { /* already stopped */ } });
+}
+
+// The banner can't be tapped while its clip plays; the ▶ comes back when it ends
+function setBannerBusy(busy) {
+  document.getElementById('end-banner').disabled = busy;
+}
+
+function replayEndSound() {
+  const state = endState();
+  if (!state) return;
+  unlockAudio(true); // a tap is an explicit request, so play even when muted
+  playSequence([state], true);
+}
+
+function updateEndBanner() {
+  const state = endState();
+  const btn = document.getElementById('end-banner');
+  btn.classList.toggle('hidden', !state);
+  if (!state) return;
+  const img = btn.querySelector('img');
+  if (img.getAttribute('src') !== BANNER_FILES[state].src) img.src = BANNER_FILES[state].src;
+  img.alt = BANNER_FILES[state].alt;
+  btn.setAttribute('aria-label', `${BANNER_FILES[state].alt}: play the Turdle crooner`);
 }
 
 function updateSoundButton() {
@@ -896,6 +954,7 @@ function updateStatsUI() {
   document.getElementById('stat-streak').innerText = userStats.streak;
   document.getElementById('stat-maxstreak').innerText = userStats.maxStreak;
   // document.getElementById('btn-theme-stats').classList.toggle('hidden', !gameState.result);
+  updateEndBanner();
   startCountdown();
 }
 
@@ -947,7 +1006,11 @@ function buildShareText() {
   }
   const lines = [`Turdle 💩 ${label}`.trim(), `${gameState.startWord} ➔ ${gameState.targetWord}`];
   if (gameState.result === 'won') {
-    const verdict = par === null ? '' : steps <= par ? ' ⛳ on par!' : ` (par ${par})`;
+    const state = endState();
+    const verdict = par === null || par === undefined ? ''
+      : state === 'under' ? ` 🏆 under par! (par ${par})`
+      : state === 'over' ? ` · over par (par ${par})`
+      : ' ⛳ on par!';
     lines.push(`Solved in ${steps} step${steps === 1 ? '' : 's'}${verdict}`);
   } else {
     lines.push(`Gave up after ${steps} step${steps === 1 ? '' : 's'} 💩`);

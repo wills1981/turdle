@@ -40,7 +40,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- Custom Stylesheet (theme) -->
-  <link rel="stylesheet" href="css/styles.css?v=2">
+  <link rel="stylesheet" href="css/styles.css?v=3">
 </head>
 <body class="app-shell flex flex-col antialiased">
 
@@ -178,6 +178,8 @@
         <button id="btn-next-ready" class="btn-3d btn-green w-full h-11 text-sm flex items-center justify-center gap-2 hidden"><span aria-hidden="true">💩</span>New puzzle ready! Play now</button>
       </div>
 
+      <button id="end-banner" class="end-banner mb-4 hidden" aria-label="Play the Turdle crooner"><img alt="" width="1167" height="214"><span class="end-banner-play" aria-hidden="true">▶︎</span></button>
+
       <div class="space-y-2">
         <!-- <button id="btn-theme-stats" class="btn-3d btn-yellow w-full min-h-12 py-2 px-3 text-sm leading-tight flex items-center justify-center gap-2 hidden"><span aria-hidden="true">🎶</span>Sing along to the Turdle theme!</button> -->
         <button id="btn-share" class="btn-3d btn-teal w-full h-12 text-base flex items-center justify-center gap-2"><span aria-hidden="true">📤</span>Share Results</button>
@@ -292,6 +294,6 @@
   </div>
 
   <!-- Bump ?v= with each release so the page never runs against an older cached script -->
-  <script src="js/app.js?v=5"></script>
+  <script src="js/app.js?v=6"></script>
 </body>
 </html>
