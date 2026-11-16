@@ -875,6 +875,7 @@ function showToast(msg, anim = "") {
 function showModal(id) { document.getElementById(id).classList.remove('hidden'); }
 function hideModals() {
   stopCountdown();
+  stopSound();
   document.querySelectorAll('[id^="modal-"]').forEach(m => m.classList.add('hidden'));
   document.getElementById('theme-audio').pause();
 }
