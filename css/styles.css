@@ -161,7 +161,7 @@ button { touch-action: manipulation; -webkit-touch-callout: none; }
 }
 
 /* End-of-game crooner banner in the stats window: tap to replay its clip */
-.end-banner { position: relative; display: block; width: 100%; padding: 0; border: 0; background: none; border-radius: 16px; overflow: hidden; cursor: pointer; transition: transform .1s; }
+.end-banner { position: relative; display: block; width: 100%; padding: 0; border: 0; background: none; border-radius: 10px; overflow: hidden; cursor: pointer; transition: transform .1s; }
 .end-banner img { display: block; width: 100%; height: auto; }
 .end-banner:active:not(:disabled) { transform: scale(.98); }
 .end-banner:disabled { cursor: default; }
