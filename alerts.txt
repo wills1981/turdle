@@ -1,0 +1,31 @@
+# Turdle notices: a pop-up shown when the game opens. Closing it hides it until the next visit (browser session).
+#
+# Each notice is   KEY: "<html>";   where KEY is
+#   a UK date, YYYY-MM-DD  -> shown on that day only
+#   a weekday, e.g. FRIDAY -> shown every week on that day (comment it out to stop)
+# A dated notice wins over a weekday one on the same day.
+# The HTML ends at the first line ending in  ";  so attributes like width="50" are fine inside.
+# Images: give just the filename; it's loaded from images/ (subfolders too: src="xmas/tree.png" -> images/xmas/tree.png).
+# Lines starting with # are ignored, so commenting out a notice's first line switches it off.
+#
+# Examples (switched off):
+#2026-12-25: "
+#<h2>Heading</h2>
+#<p>Text</p>
+#<img src="image.png" width="50">
+#";
+
+2026-11-17:: "
+<h2>Happy Tuesday Turdlers!! 💩</h2>
+<p>Due to popular demand and feedback from players Paul and Shelley, <strong>3-letter</strong> puzzles have now been ditched in favour of <strong>4-6 letter</strong> puzzles.</p>
+<br>
+<h3>7-letter puzzles</h3>
+<p>To keep things even more exciting, the occasional <strong>7 letter</strong> puzzle will be thrown in every so often!</p>
+<p>Have fun and <strong>HAPPY TURDLING!!!</strong></p>
+";
+
+#FRIDAY: "
+#<h2>Happy Friday</h2>
+#<p>Text</p>
+#<img src="image.png" width="50">
+#";

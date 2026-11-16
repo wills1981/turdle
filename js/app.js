@@ -54,6 +54,7 @@ window.onload = async () => {
   buildKeyboardUI();
   setupEventListeners();
   await loadPuzzleMode('daily');
+  loadNotice();
 };
 
 function applyFeatureFlags() {
@@ -233,6 +234,8 @@ function initGameSession() {
 
   document.getElementById('start-word-display').innerText = gameState.startWord;
   document.getElementById('target-word-display').innerText = gameState.targetWord;
+  ['start-word-display', 'target-word-display'].forEach(id =>
+    document.getElementById(id).classList.toggle('chip-long', gameState.wordLength >= 7));
   document.getElementById('word-len-badge').innerText = `${gameState.wordLength} Letters`;
   document.getElementById('par-badge').innerText = `Par: ${gameState.parMoves !== null ? gameState.parMoves : '--'}`;
   
@@ -555,7 +558,7 @@ function renderGrid() {
 
 function createRowElement(wordStr, type, target = gameState.targetWord, length = gameState.wordLength) {
   const row = document.createElement('div');
-  row.className = "flex gap-2 justify-center w-full" + (type === "active" ? "" : " animate-pop");
+  row.className = `flex gap-2 justify-center w-full tiles-${length}` + (type === "active" ? "" : " animate-pop");
 
   for (let i = 0; i < length; i++) {
     const char = wordStr[i] || "";
@@ -964,10 +967,61 @@ function showToast(msg, anim = "") {
 
 function showModal(id) { document.getElementById(id).classList.remove('hidden'); }
 function hideModals() {
+  if (!document.getElementById('modal-notice').classList.contains('hidden')) dismissNotice();
   stopCountdown();
   stopSound();
   document.querySelectorAll('[id^="modal-"]').forEach(m => m.classList.add('hidden'));
   document.getElementById('theme-audio').pause();
+}
+
+// --- Notice pop-up (alerts.txt) ------------------------------------------------
+// Blocks are `KEY: "<html>";` where KEY is a UK date (YYYY-MM-DD) or a weekday (FRIDAY = every Friday).
+// A dated notice beats a weekday one. Closing it hides it for the rest of the session (sessionStorage).
+const WEEKDAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+const NOTICE_KEY = 'turdle-notice';
+let noticeId = null;
+
+function parseAlerts(txt) {
+  const body = txt.split(/\r?\n/).filter(l => !l.trim().startsWith('#')).join('\n');
+  const re = new RegExp(`^\\s*(\\d{4}-\\d{2}-\\d{2}|${WEEKDAYS.join('|')})\\s*:\\s*"([\\s\\S]*?)"\\s*;\\s*$`, 'gmi');
+  const alerts = {};
+  for (const [, key, html] of body.matchAll(re)) alerts[key.toUpperCase()] = html.trim();
+  return alerts;
+}
+
+async function loadNotice() {
+  try {
+    const res = await fetch('alerts.txt');
+    if (!res.ok) return;
+    const alerts = parseAlerts(await res.text());
+    const today = todayUK();
+    const weekday = WEEKDAYS[new Date(today + 'T12:00:00Z').getUTCDay()];
+    const key = alerts[today] !== undefined ? today : alerts[weekday] !== undefined ? weekday : null;
+    if (!key || !alerts[key]) return;
+    noticeId = `${key}|${today}`;
+    try { if (sessionStorage.getItem(NOTICE_KEY) === noticeId) return; } catch (e) {}
+    showNotice(alerts[key]);
+  } catch (e) {
+    console.log('No notice today');
+  }
+}
+
+function showNotice(html) {
+  const box = document.getElementById('notice-content');
+  box.innerHTML = html;
+  // Images are filenames under images/ (subfolders allowed); full URLs are left alone
+  box.querySelectorAll('img[src]').forEach(img => {
+    const src = img.getAttribute('src');
+    if (!/^(https?:|data:)/i.test(src)) img.setAttribute('src', 'images/' + src.replace(/^\/+/, '').replace(/^images\//, ''));
+  });
+  // Don't cover another window (e.g. a restored game's stats): wait until none is open
+  const open = () => [...document.querySelectorAll('[id^="modal-"]')].some(m => !m.classList.contains('hidden'));
+  const tryShow = () => (open() ? setTimeout(tryShow, 500) : showModal('modal-notice'));
+  tryShow();
+}
+
+function dismissNotice() {
+  try { if (noticeId) sessionStorage.setItem(NOTICE_KEY, noticeId); } catch (e) {}
 }
 
 // --- Turdle Theme ---------------------------------------------------------------

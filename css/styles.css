@@ -89,6 +89,12 @@ body {
 .yesterday-ladder .flex { gap: .35rem; }
 .yesterday-ladder .tile { width: 38px; height: 38px; font-size: 1.05rem; border-radius: 10px; border-bottom-width: 4px; }
 
+/* 7-letter words: shrink tiles with the screen so a row fits a 360px phone */
+.tiles-7 { gap: .35rem !important; }
+.tiles-7 .tile { width: min(48px, 11vw); height: min(48px, 11vw); font-size: min(1.3rem, 5.2vw); border-radius: 11px; }
+.yesterday-ladder .tiles-7 { gap: .25rem !important; }
+.yesterday-ladder .tiles-7 .tile { width: min(36px, 8.6vw); height: min(36px, 8.6vw); font-size: min(1rem, 4.2vw); border-radius: 8px; }
+
 /* Turdle Theme lyrics */
 .lyrics { background: #fff; border: 2px solid #f0e7d6; border-radius: 16px; padding: .9rem 1rem; font-size: .9rem; font-weight: 700; line-height: 1.45; }
 .lyrics p + p { margin-top: .9rem; }
@@ -103,6 +109,8 @@ body {
 }
 .chip-start  { background: var(--teal-soft); color: var(--teal-dark); border-color: #a8e3d4; }
 .chip-target { background: var(--green-soft); color: var(--green-dark); border-color: #a9e6c4; }
+/* 7-letter words: smaller so both chips fit a phone-width card (!important beats Tailwind's text-2xl) */
+.word-chip.chip-long { font-size: min(1.5rem, 5vw) !important; padding: .2rem .5rem !important; letter-spacing: .01em; }
 
 .pill {
   background: var(--yellow-soft);
@@ -172,3 +180,11 @@ button { touch-action: manipulation; -webkit-touch-callout: none; }
 .end-audio-fill { height: 100%; width: 0; border-radius: 4px; background: var(--teal); }
 .end-audio-time { flex: none; min-width: 64px; text-align: right; font-size: 12px; font-weight: 700; color: var(--ink-soft); }
 .end-audio-hint { margin-top: 6px; font-size: 12px; font-weight: 700; text-align: center; color: var(--ink-soft); }
+
+/* Notice pop-up (alerts.txt): owner-written HTML */
+.notice-pop-up { font-size: .9rem; line-height: 1.5; color: var(--ink); }
+.notice-pop-up h2, .notice-pop-up h3 { font-family: 'Fredoka', 'Nunito', system-ui, sans-serif; font-weight: 700; font-size: 1.5rem; line-height: 1.2; margin-bottom: .6rem; }
+.notice-pop-up h3 { font-size: 1.15rem; }
+.notice-pop-up p + p, .notice-pop-up p + img, .notice-pop-up img + p { margin-top: .75rem; }
+.notice-pop-up img { display: block; max-width: 100%; height: auto; margin-left: auto; margin-right: auto; }
+.notice-pop-up a { color: var(--teal-dark); text-decoration: underline; }

@@ -13,6 +13,12 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
 - `tools/build_dictionaries.py`: regenerates both dictionary tiers from SCOWL. `tools/blocklist.txt` lists slurs removed from both.
 - `tools/puzzles.py`: checks and generates `puzzles.txt`. **It holds the fairness rules; keep this file in sync with it.**
 - `tools/silly_words.txt`: the pool of silly start/target words the generator draws from.
+- `tools/puzzles-3-letter.txt`: the 108 3-letter puzzles taken out of the schedule from 2026-11-17 (kept for reuse).
+- `alerts.txt` + `images/`: a notice pop-up (`#modal-notice`, `loadNotice()` in `js/app.js`) shown when the game opens.
+  Blocks are `KEY: "<html>";`, where KEY is a UK date (that day only) or a weekday like `FRIDAY` (every week).
+  A dated notice wins over a weekday one. Comment out a block's first line with `#` to switch it off.
+  `<img src>` is a filename under `images/` (subfolders allowed). Closing it hides it for the rest of the browser
+  session (`sessionStorage` `turdle-notice`). The owner's HTML is trusted (it's our own file).
 - `FEATURES` at the top of `js/app.js`: free play, hint and undo are currently switched off.
 - `icons/og-<day>.png` + `s/<day>.html`: weekday link-preview images (BUMS, TIT, FARTY, GONAD, ARSE, TWAT, BALLS).
   Share links go to the puzzle's weekday page (`s/thu.html?p=2`), which sets that image and redirects to the game.
@@ -44,7 +50,7 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
 2026-11-11|FIB|NOB
 ```
 - One puzzle per day. Dates must be consecutive with no gaps or duplicates, in ascending order.
-- Words are UPPERCASE, the same length, 3–6 letters. Lines starting with `#` are comments.
+- Words are UPPERCASE, the same length, 4–7 letters (3s only in the past schedule). Lines starting with `#` are comments.
 - A missing date falls back to a built-in schedule in `js/app.js`, so don't leave gaps.
 
 ### Theme
@@ -53,17 +59,18 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
 - At least one of start/target must be silly; the other can be an everyday word from `common-N.txt`
   (the generator prefers both silly, 3:1).
 - Cheeky is fine; hateful is not. Never use anything in `tools/blocklist.txt` or any slur.
-- Mix word lengths randomly across 3–6 letters.
+- Mostly 4s and 5s, a 6 now and then, and a 7 every 3–6 weeks (`GEN_LENGTHS`, `MIN_GAP_DAYS`, `DUE_DAYS`).
+  No new 3-letter puzzles.
 - Start/target words only need to be in `dictionary-N.txt`; they don't need to be common.
 
 ### Fairness rules (puzzles must not be so hard that players give up)
 Enforced by `tools/puzzles.py check`; the constants live at the top of that file.
 - **Par** (shortest route through common words): 5–6 for 3-letter puzzles (kept tricky; the generator favours 6),
   4–6 for 4–6 letters. Par 3 felt too easy; par 7+ makes players give up.
-- **No shared letter positions**: start and target never have the same letter in the same position
-  (e.g. SPUD→SOCK is out). This currently rules out 6-letter puzzles (par would have to be exactly 6 with 2+ routes,
-  and no silly pair manages it). Puzzles before 2026-11-13 predate this rule and the 3-letter par minimum
-  (`NEW_RULES_FROM` in `tools/puzzles.py`).
+- **No shared letter positions** for 3–5 letters: start and target never have the same letter in the same position
+  (e.g. SPUD→SOCK is out). Long words can't do that within par 6, so from 2026-11-17 (`LONG_RULES_FROM`)
+  6s may share 1 position and 7s 3 (`MAX_SHARED`). Puzzles before 2026-11-13 predate this rule and the 3-letter
+  par minimum (`NEW_RULES_FROM` in `tools/puzzles.py`).
 - **At least 2 distinct shortest routes**, so one wrong turn isn't fatal.
 - **Route words must be everyday words**: the par route goes only through `common-N.txt`.
   Words that only connect via obscure words (e.g. EGGS needs ERGS, BREATH is a near-island) are out.
@@ -76,6 +83,8 @@ Enforced by `tools/puzzles.py check`; the constants live at the top of that file
    python3 tools/puzzles.py generate --from 2027-01-01 --to 2027-03-31 --append
    ```
    Or edit `puzzles.txt` by hand for themed days (e.g. Christmas).
+   To swap out every future puzzle of some length (other days keep their words):
+   `python3 tools/puzzles.py replace --from 2026-11-17 --lengths 3 --seed 17`
 2. **Always validate before committing:**
    ```bash
    python3 tools/puzzles.py check

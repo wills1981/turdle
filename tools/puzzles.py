@@ -3,6 +3,7 @@
 
   python3 tools/puzzles.py check
   python3 tools/puzzles.py generate --from 2027-01-01 --to 2027-03-31 [--seed N] [--append]
+  python3 tools/puzzles.py replace --from 2026-11-17 --lengths 3 [--seed N]
 
 Routes are found the same way the game does (findRoute in js/app.js): through the
 everyday words in dictionaries/common-N.txt, plus the puzzle's own start and target.
@@ -24,21 +25,34 @@ BLOCKLIST = Path(__file__).resolve().parent / "blocklist.txt"
 HEADER = "# Date (YYYY-MM-DD) | Start Word | Target Word"
 
 # --- Fairness rules -------------------------------------------------------
-LENGTHS = (3, 4, 5, 6)
-MIN_PAR = {3: 5, 4: 4, 5: 4, 6: 4}   # 3-letter puzzles are short, so make them work harder
-MAX_PAR = {3: 6, 4: 6, 5: 6, 6: 6}
+LENGTHS = (3, 4, 5, 6, 7)            # lengths check accepts (3s are in the past schedule)
+GEN_LENGTHS = {4: 10, 5: 10, 6: 3, 7: 1}  # lengths the generator picks, with weights (6s/7s now and then)
+MIN_GAP_DAYS = {7: 21}   # 7s are tricky: at least 3 weeks apart...
+DUE_DAYS = {7: 35}       # ...and picked first once 5 weeks have passed, so one lands every 3-6 weeks
+MIN_PAR = {3: 5, 4: 4, 5: 4, 6: 4, 7: 4}   # 3-letter puzzles are short, so make them work harder
+MAX_PAR = {3: 6, 4: 6, 5: 6, 6: 6, 7: 6}
 MIN_ROUTES = 2           # distinct shortest routes, so one wrong turn isn't fatal
 MAX_WORD_USES = 2        # times a word may appear as start/target in the file
 # generator weights by par: favour mid-length ladders, but push 3-letter ones as long as possible
-PAR_WEIGHTS = {3: {5: 1, 6: 2}, 4: {4: 3, 5: 3, 6: 1}, 5: {4: 3, 5: 3, 6: 1}, 6: {4: 3, 5: 3, 6: 1}}
+PAR_WEIGHTS = {3: {5: 1, 6: 2}, 4: {4: 3, 5: 3, 6: 1}, 5: {4: 3, 5: 3, 6: 1}, 6: {4: 3, 5: 3, 6: 1},
+               7: {4: 3, 5: 3, 6: 1}}
 # start and target share no letter in the same position
 # puzzles before this date predate this rule and the 3-letter MIN_PAR of 5 (they used 4), so are exempt
 NEW_RULES_FROM = dt.date(2026, 11, 13)
+# Long words can't get from start to target within par 6 without some letters staying put
+# (n letters all different needs par >= n), so from this date 6s and 7s may share a few positions.
+LONG_RULES_FROM = dt.date(2026, 11, 17)
+MAX_SHARED = {6: 1, 7: 3}  # positions start and target may share, by length (others: 0)
 # ---------------------------------------------------------------------------
 
 
 def shared_positions(start, target):
     return [i + 1 for i, (a, b) in enumerate(zip(start, target)) if a == b]
+
+
+def max_shared(n, date=None):
+    """How many letter positions start and target may share (date None = a new puzzle)."""
+    return MAX_SHARED.get(n, 0) if date is None or date >= LONG_RULES_FROM else 0
 
 
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -97,8 +111,9 @@ def fairness_problems(start, target, result, date=None):
     new_rules = date is None or date >= NEW_RULES_FROM
     if new_rules:
         shared = shared_positions(start, target)
-        if shared:
-            problems.append(f"shares a letter in position {', '.join(map(str, shared))}")
+        if len(shared) > max_shared(n, date):
+            problems.append(f"shares a letter in position {', '.join(map(str, shared))}"
+                            f" (max {max_shared(n, date)})")
     if result is None:
         return problems + ["no route through common words"]
     par, routes, _ = result
@@ -145,7 +160,7 @@ def check(path=PUZZLES, verbose=True):
         start, target = start.upper(), target.upper()
         n = len(start)
         if len(target) != n or n not in LENGTHS:
-            errors.append(f"{where}: words must be the same length, 3-6 letters")
+            errors.append(f"{where}: words must be the same length, 3-7 letters")
             continue
         problems += [f"{w} is not in dictionary-{n}.txt" for w in (start, target) if w not in words("dictionary", n)]
         problems += [f"{w} is blocklisted" for w in (start, target) if w in blocked]
@@ -173,7 +188,7 @@ def silly_words():
     blocked = blocklist()
     return {n: sorted(w for w in set(text.upper().split())
                       if len(w) == n and w in words("dictionary", n) and w not in blocked)
-            for n in LENGTHS}
+            for n in GEN_LENGTHS}
 
 
 # Everyday words that make a flat start/target: function words, and past tenses (RARED, HALED)
@@ -205,7 +220,7 @@ def fair_pairs():
             plain = {w for w in common if not plain_word_too_dull(w)}
             for t in (plain | silly_set) - blocked - {s}:
                 key = frozenset((s, t))
-                if key in found or shared_positions(s, t):
+                if key in found or len(shared_positions(s, t)) > max_shared(n):
                     continue
                 if t in common:
                     ok = t in dist and MIN_PAR[n] <= dist[t] <= MAX_PAR[n] and ways[t] >= MIN_ROUTES
@@ -223,30 +238,79 @@ def fair_pairs():
 SILLY_PAIR_WEIGHT = 3  # favour pairs where both words are silly
 
 
+def length_order(rng):
+    """Generator lengths in a weighted random order: the first is the pick, the rest are fallbacks."""
+    pool, order = dict(GEN_LENGTHS), []
+    while pool:
+        n = rng.choices(list(pool), weights=list(pool.values()))[0]
+        order.append(n)
+        del pool[n]
+    return order
+
+
+def pick_pair(rng, pairs_by_len, uses, used_pairs, day=None, last_seen=None):
+    """A fresh fair (start, target), or None if every pair is used up. Lengths seen within
+    MIN_GAP_DAYS of day (last_seen: length -> date) are skipped."""
+    order = length_order(rng)
+    if day and last_seen:
+        due = [n for n in DUE_DAYS if (day - last_seen.get(n, day)).days >= DUE_DAYS[n]]
+        order = due + [n for n in order if n not in due]
+    for n in order:
+        if day and last_seen and n in MIN_GAP_DAYS and n in last_seen \
+                and abs((day - last_seen[n]).days) < MIN_GAP_DAYS[n]:
+            continue
+        options = [o for o in pairs_by_len[n]
+                   if frozenset(o[:2]) not in used_pairs and uses[o[0]] < MAX_WORD_USES and uses[o[1]] < MAX_WORD_USES]
+        if options:
+            weights = [PAR_WEIGHTS[n].get(par, 1) * (SILLY_PAIR_WEIGHT if both else 1)
+                       for _, _, par, both in options]
+            s, t, _, _ = rng.choices(options, weights=weights)[0]
+            return (t, s) if rng.random() < 0.5 else (s, t)
+    return None
+
+
+def replace(from_date, lengths, seed=None):
+    """Swap every puzzle on/after from_date whose length is in lengths for a fresh pair;
+    every other line keeps its date and words."""
+    rng = random.Random(seed)
+    pairs_by_len = fair_pairs()
+    entries = [tuple(e[1:]) for e in parse()]
+    uses = Counter(w for _, s, t in entries for w in (s, t))
+    used_pairs = {frozenset((s, t)) for _, s, t in entries}
+    out, changed = [], 0
+    last_seen = {n: from_date - dt.timedelta(days=DUE_DAYS[n] - 14) for n in DUE_DAYS}  # first one ~2 weeks in
+    for d, s, t in entries:
+        day = dt.date.fromisoformat(d)
+        if day >= from_date and len(s) in lengths:
+            uses.subtract((s, t))  # freed up (the old pair stays in used_pairs, so it isn't reused)
+            pair = pick_pair(rng, pairs_by_len, uses, used_pairs, day, last_seen)
+            if not pair:
+                sys.exit(f"Ran out of fair silly pairs at {d}; add words to {SILLY_WORDS.name}")
+            s, t = pair
+            uses.update(pair)
+            used_pairs.add(frozenset(pair))
+            changed += 1
+        last_seen[len(s)] = day
+        out.append((d, s, t))
+    return out, changed
+
+
 def generate(start_date, end_date, seed=None, existing=()):
     rng = random.Random(seed)
     pairs_by_len = fair_pairs()
     uses = Counter(w for _, s, t in existing for w in (s, t))
     used_pairs = {frozenset((s, t)) for _, s, t in existing}
+    last_seen = {n: start_date - dt.timedelta(days=DUE_DAYS[n] - 14) for n in DUE_DAYS}
+    last_seen.update({len(s): dt.date.fromisoformat(d) for d, s, _ in existing})
     out, day = [], start_date
     while day <= end_date:
-        lengths = list(LENGTHS)
-        rng.shuffle(lengths)
-        for n in lengths:
-            options = [o for o in pairs_by_len[n]
-                       if frozenset(o[:2]) not in used_pairs and uses[o[0]] < MAX_WORD_USES and uses[o[1]] < MAX_WORD_USES]
-            if options:
-                weights = [PAR_WEIGHTS[n].get(par, 1) * (SILLY_PAIR_WEIGHT if both else 1)
-                           for _, _, par, both in options]
-                s, t, _, _ = rng.choices(options, weights=weights)[0]
-                if rng.random() < 0.5:
-                    s, t = t, s
-                break
-        else:
+        pair = pick_pair(rng, pairs_by_len, uses, used_pairs, day, last_seen)
+        if not pair:
             sys.exit(f"Ran out of fair silly pairs at {day}; add words to {SILLY_WORDS.name}")
-        uses.update((s, t))
-        used_pairs.add(frozenset((s, t)))
-        out.append((day.isoformat(), s, t))
+        uses.update(pair)
+        used_pairs.add(frozenset(pair))
+        out.append((day.isoformat(), *pair))
+        last_seen[len(pair[0])] = day
         day += dt.timedelta(days=1)
     return out
 
@@ -260,9 +324,21 @@ def main():
     g.add_argument("--to", dest="end", required=True, type=dt.date.fromisoformat)
     g.add_argument("--seed", type=int)
     g.add_argument("--append", action="store_true", help="add to the end of puzzles.txt instead of replacing it")
+    r = sub.add_parser("replace", help="swap puzzles of some lengths for fresh ones from a date on")
+    r.add_argument("--from", dest="start", required=True, type=dt.date.fromisoformat)
+    r.add_argument("--lengths", required=True, type=lambda v: {int(x) for x in v.split(",")},
+                   help="comma-separated word lengths to replace, e.g. 3")
+    r.add_argument("--seed", type=int)
     args = ap.parse_args()
 
     if args.cmd == "check":
+        sys.exit(0 if check() else 1)
+    if args.cmd == "replace":
+        if args.start <= dt.date.today():
+            sys.exit("--from must be after today: never change today's or past puzzles")
+        entries, changed = replace(args.start, args.lengths, args.seed)
+        PUZZLES.write_text("\n".join([HEADER] + [f"{d}|{s}|{t}" for d, s, t in entries]) + "\n", encoding="utf-8")
+        print(f"Replaced {changed} puzzles in {PUZZLES.name}\n")
         sys.exit(0 if check() else 1)
 
     existing = [tuple(e[1:]) for e in parse()] if args.append and PUZZLES.exists() else []

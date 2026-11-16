@@ -1,12 +1,12 @@
 // Turdle service worker: lets the installed app open offline.
 // Network-first for everything, so new daily puzzles and site updates always win;
 // the cache is only a fallback when offline. Bump CACHE to drop old caches.
-const CACHE = 'turdle-v5';
+const CACHE = 'turdle-v6';
 const PRECACHE = [
-  './', 'index.html', 'css/styles.css', 'js/app.js', 'puzzles.txt', 'manifest.webmanifest',
+  './', 'index.html', 'css/styles.css', 'js/app.js', 'puzzles.txt', 'alerts.txt', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png',
-  'dictionaries/dictionary-3.txt', 'dictionaries/dictionary-4.txt', 'dictionaries/dictionary-5.txt', 'dictionaries/dictionary-6.txt',
-  'dictionaries/common-3.txt', 'dictionaries/common-4.txt', 'dictionaries/common-5.txt', 'dictionaries/common-6.txt'
+  'dictionaries/dictionary-3.txt', 'dictionaries/dictionary-4.txt', 'dictionaries/dictionary-5.txt', 'dictionaries/dictionary-6.txt', 'dictionaries/dictionary-7.txt',
+  'dictionaries/common-3.txt', 'dictionaries/common-4.txt', 'dictionaries/common-5.txt', 'dictionaries/common-6.txt', 'dictionaries/common-7.txt'
 ];
 
 self.addEventListener('install', event => {

@@ -40,7 +40,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- Custom Stylesheet (theme) -->
-  <link rel="stylesheet" href="css/styles.css?v=4">
+  <link rel="stylesheet" href="css/styles.css?v=5">
 </head>
 <body class="app-shell flex flex-col antialiased">
 
@@ -141,6 +141,15 @@
         </ul>
       </div>
       <button class="modal-close btn-3d btn-teal mt-5 w-full h-11 text-base">Got it!</button>
+    </div>
+  </div>
+
+  <!-- MODAL: Notice (from alerts.txt, see loadNotice in js/app.js) -->
+  <div id="modal-notice" class="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="modal-card max-w-md w-full p-6 relative max-h-[90vh] flex flex-col">
+      <button class="modal-close btn-3d btn-white absolute top-4 right-4 w-9 h-9 text-sm" aria-label="Close">✕</button>
+      <div id="notice-content" class="notice-pop-up min-h-0 overflow-y-auto pr-10"></div>
+      <!--<button class="modal-close btn-3d btn-teal mt-5 w-full h-11 text-base shrink-0">Got it!</button>-->
     </div>
   </div>
 
@@ -303,6 +312,8 @@
   </div>
 
   <!-- Bump ?v= with each release so the page never runs against an older cached script -->
-  <script src="js/app.js?v=8"></script>
+  <script src="js/app.js?v=10"></script>
+  <script data-goatcounter="https://turdle.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>

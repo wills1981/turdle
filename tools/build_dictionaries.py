@@ -25,7 +25,7 @@ SCOWL_VERSION = "2020.12.07"
 SCOWL_URL = f"https://downloads.sourceforge.net/wordlist/scowl-{SCOWL_VERSION}.tar.gz"
 SCOWL_SHA256 = "5587667caa20c4891390c2d42dbb4d5c4c3f41bee77af1457ece3ba23fb859cc"
 
-LENGTHS = (3, 4, 5, 6)
+LENGTHS = (3, 4, 5, 6, 7)
 VALID_MAX = 60   # SCOWL's recommended "large spellchecker" size; real words, few oddities
 COMMON_MAX = 35  # everyday vocabulary
 SIZES = (10, 20, 35, 40, 50, 55, 60, 70, 80, 95)
