@@ -98,7 +98,10 @@ function setupEventListeners() {
   // document.getElementById('btn-theme-stats').addEventListener('click', showTheme);
   document.getElementById('btn-yesterday-back').addEventListener('click', () => { hideModals(); updateStatsUI(); showModal('modal-stats'); });
   document.getElementById('btn-sound').addEventListener('click', toggleSound);
-  document.getElementById('end-banner').addEventListener('click', replayEndSound);
+  document.getElementById('end-banner').addEventListener('click', togglePlayEndClip);
+  document.getElementById('end-audio-play').addEventListener('click', togglePlayEndClip);
+  document.getElementById('end-audio-restart').addEventListener('click', restartEndClip);
+  document.getElementById('end-audio-progress').addEventListener('click', seekEndClip);
   updateSoundButton();
   // Native share sheet (WhatsApp, Messages, etc.) is mainly available on mobile
   if (!navigator.share) document.getElementById('btn-share').classList.add('hidden');
@@ -377,7 +380,7 @@ function submitWord() {
     showToast(`🎉 Puzzle Complete! ${msg}`, "pop");
     setTimeout(() => {
       showModal('modal-stats'); updateStatsUI();
-      playSequence([endState()]);
+      autoplayEndClip();
     }, 1200);
   }
 }
@@ -523,7 +526,7 @@ function handleGiveUp() {
   renderGrid();
   setTimeout(() => {
     showModal('modal-stats'); updateStatsUI();
-    playSequence([endState()]);
+    autoplayEndClip();
   }, 2500);
 }
 
@@ -623,7 +626,7 @@ function handlePhysicalKeyboard(e) {
 // Played when the stats window opens at the end of a game: on par one clip, otherwise an effect, then speech.
 // Web Audio, unlocked during the tap/keypress that ends the game, so iOS allows the
 // delayed playback. Any failure is silent: sound must never break the game.
-// One clip and one banner (shown in the stats window, tap to replay) per end state; see endState().
+// One clip and one banner (shown in the stats window, with play/pause, restart and seek) per end state; see endState().
 const SOUND_FILES = {
   over: 'audio-files/too-many-turns.mp3',
   under: 'audio-files/under-par.mp3',
@@ -664,7 +667,9 @@ function unlockAudio(force = false) {
       if (!Ctx) return;
       audioCtx = new Ctx();
     }
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    // Play through the iPhone silent switch, like a normal <audio> element (Safari 16.4+)
+    if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback';
+    if (audioCtx.state === 'suspended' && clipState !== 'paused') audioCtx.resume(); // pause owns its own resume
     // A silent one-sample buffer, played inside the gesture, unlocks iOS
     const src = audioCtx.createBufferSource();
     src.buffer = audioCtx.createBuffer(1, 1, 22050);
@@ -700,76 +705,160 @@ function preloadSounds() {
   Object.keys(SOUND_FILES).forEach(n => fetchSound(n).catch(() => {}));
 }
 
-// Clips whose tail overlaps the next clip: the next one starts `next` seconds in, and this
-// one fades to `duck` of its volume so it sits under the speech, e.g. { next: 4.0, duck: 0.3 }.
-const SOUND_OVERLAP = {};
-let currentSources = [];
-
+// The end clip, played on the audio clock. Pause suspends the AudioContext (only this clip uses it),
+// which also freezes currentTime, so the position stays currentTime - clip.startAt.
+let clip = null;          // { name, buffer, startAt } for the clip last started
+let clipState = 'idle';   // 'idle' | 'loading' | 'playing' | 'paused' | 'ended'
+let clipDuration = {};    // name -> seconds, once decoded
+let autoplayBlocked = false;
 let playToken = 0;
+let currentSources = [];
+let progressFrame = 0;
 
-async function playSequence(names, force = false) {
-  if ((!force && !soundOn()) || !audioCtx || names.some(n => !SOUND_FILES[n])) return;
+async function playEndClip(name, offset = 0, force = false) {
+  if ((!force && !soundOn()) || !audioCtx || !SOUND_FILES[name]) return;
   const token = ++playToken;
-  setBannerBusy(true);
+  setClipState('loading');
   try {
-    const buffers = await Promise.all(names.map(decodeSound));
+    const buffer = await decodeSound(name);
     if (token !== playToken) return;
     stopSound();
-    playToken = token; // stopSound bumps it and frees the banner
-    setBannerBusy(true);
+    playToken = token; // stopSound bumps it
     document.getElementById('theme-audio').pause();
-    // Schedule every clip up front on the audio clock, so overlaps are sample-accurate
-    let at = audioCtx.currentTime + 0.05;
-    buffers.forEach((buffer, i) => {
-      const src = audioCtx.createBufferSource();
-      const gain = audioCtx.createGain();
-      src.buffer = buffer;
-      src.connect(gain).connect(audioCtx.destination);
-      const overlap = i < buffers.length - 1 && SOUND_OVERLAP[names[i]];
-      const nextAt = at + (overlap ? overlap.next : buffer.duration);
-      if (overlap) {
-        gain.gain.setValueAtTime(1, nextAt);
-        gain.gain.linearRampToValueAtTime(overlap.duck, nextAt + 0.3);
-      }
-      if (i === buffers.length - 1) src.onended = () => { if (token === playToken) setBannerBusy(false); };
-      src.start(at);
-      currentSources.push(src);
-      at = nextAt;
-    });
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    clipDuration[name] = buffer.duration;
+    offset = Math.max(0, Math.min(offset, buffer.duration - 0.05));
+    const at = audioCtx.currentTime + 0.05;
+    const src = audioCtx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(audioCtx.destination);
+    src.onended = () => { if (token === playToken) setClipState('ended'); };
+    src.start(at, offset);
+    currentSources.push(src);
+    clip = { name, buffer, startAt: at - offset };
+    autoplayBlocked = false;
+    setClipState('playing');
   } catch (e) { /* missing or undecodable file: stay quiet */
-    if (token === playToken) setBannerBusy(false);
+    if (token === playToken) setClipState('idle');
   }
 }
 
 function stopSound() {
   playToken++;
-  setBannerBusy(false);
   const sources = currentSources;
   currentSources = [];
   sources.forEach(src => { try { src.stop(); } catch (e) { /* already stopped */ } });
+  // A paused clip leaves the context suspended; wake it so the next play isn't silent
+  if (clipState === 'paused' && audioCtx) audioCtx.resume();
+  clip = null;
+  setClipState('idle');
 }
 
-// The banner can't be tapped while its clip plays; the ▶ comes back when it ends
-function setBannerBusy(busy) {
-  document.getElementById('end-banner').disabled = busy;
+function clipPosition() {
+  if (clipState === 'ended') return clip ? clip.buffer.duration : 0;
+  if (!clip || !audioCtx || (clipState !== 'playing' && clipState !== 'paused')) return 0;
+  return Math.max(0, Math.min(clip.buffer.duration, audioCtx.currentTime - clip.startAt));
 }
 
-function replayEndSound() {
+// Autoplay when the stats window opens at the end of a game. If the browser keeps the
+// context suspended (no recent tap), say so, so the player knows to press play.
+function autoplayEndClip() {
+  const state = endState();
+  if (!state || !soundOn()) return updateEndAudio();
+  playEndClip(state);
+  setTimeout(() => {
+    if (clipState !== 'playing' && clipState !== 'loading' && soundOn() && endState()) {
+      autoplayBlocked = !audioCtx || audioCtx.state !== 'running';
+      updateEndAudio();
+    }
+  }, 600);
+}
+
+// Every control is an explicit tap, so it plays even when autoplay is muted
+function togglePlayEndClip() {
   const state = endState();
   if (!state) return;
-  unlockAudio(true); // a tap is an explicit request, so play even when muted
-  playSequence([state], true);
+  if (clipState === 'playing') {
+    audioCtx.suspend();
+    setClipState('paused');
+  } else if (clipState === 'paused') {
+    audioCtx.resume();
+    setClipState('playing');
+  } else if (clipState !== 'loading') {
+    unlockAudio(true);
+    playEndClip(state, 0, true);
+  }
+}
+
+function restartEndClip() {
+  const state = endState();
+  if (!state) return;
+  unlockAudio(true);
+  playEndClip(state, 0, true);
+}
+
+function seekEndClip(e) {
+  const state = endState();
+  const duration = clipDuration[state];
+  if (!state || !duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const fraction = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  unlockAudio(true);
+  playEndClip(state, fraction * duration, true);
+}
+
+function setClipState(s) {
+  clipState = s;
+  updateEndAudio();
+  cancelAnimationFrame(progressFrame);
+  if (s === 'playing') progressFrame = requestAnimationFrame(tickProgress);
+}
+
+function tickProgress() {
+  renderProgress();
+  if (clipState === 'playing') progressFrame = requestAnimationFrame(tickProgress);
+}
+
+function formatTime(sec) {
+  const s = Math.floor(sec);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function renderProgress() {
+  const duration = clipDuration[endState()] || 0;
+  const pos = clipPosition();
+  document.getElementById('end-audio-fill').style.width = duration ? `${(pos / duration) * 100}%` : '0%';
+  document.getElementById('end-audio-time').innerText = duration ? `${formatTime(pos)} / ${formatTime(duration)}` : formatTime(pos);
+}
+
+// Controls, banner overlay and the "can you hear it?" hint. Device volume can't be read, so while
+// the clip plays we just suggest turning it up.
+function updateEndAudio() {
+  const playing = clipState === 'playing' || clipState === 'loading';
+  const play = document.getElementById('end-audio-play');
+  play.innerText = playing ? '⏸' : '▶︎';
+  play.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+  let hint = '';
+  if (playing) hint = "Can't hear it? Turn your volume up 🔊 (and check silent mode)";
+  else if (!soundOn()) hint = '🔇 Sound is off. Tap ▶︎ to hear the Crooner Keith, or 🔇 above to turn it back on.';
+  else if (autoplayBlocked) hint = 'Tap ▶︎ to hear the Crooner Keith';
+  const el = document.getElementById('end-audio-hint');
+  el.innerText = hint;
+  el.classList.toggle('hidden', !hint);
+  renderProgress();
 }
 
 function updateEndBanner() {
   const state = endState();
   const btn = document.getElementById('end-banner');
   btn.classList.toggle('hidden', !state);
+  document.getElementById('end-audio').classList.toggle('hidden', !state);
   if (!state) return;
   const img = btn.querySelector('img');
   if (img.getAttribute('src') !== BANNER_FILES[state].src) img.src = BANNER_FILES[state].src;
   img.alt = BANNER_FILES[state].alt;
-  btn.setAttribute('aria-label', `${BANNER_FILES[state].alt}: play the Turdle crooner`);
+  btn.setAttribute('aria-label', `${BANNER_FILES[state].alt}: play or pause the Turdle crooner`);
+  updateEndAudio();
 }
 
 function updateSoundButton() {
@@ -785,6 +874,7 @@ function toggleSound() {
   try { localStorage.setItem(SOUND_KEY, on ? 'on' : 'off'); } catch (e) { /* not remembered */ }
   if (on) unlockAudio(); else stopSound();
   updateSoundButton();
+  updateEndAudio();
 }
 
 // --- Yesterday's answer --------------------------------------------------------
