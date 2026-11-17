@@ -31,6 +31,8 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
   A hint under the player says when sound is muted, when autoplay was blocked, or (while playing, since device volume
   can't be read) to turn the volume up. `navigator.audioSession.type = 'playback'` lets it play through the iPhone silent switch.
   Players can mute the autoplay from the stats window (🔊/🔇, saved as `turdle-sound`).
+- Share text includes the 🟩/⬜ steps grid only if the player ticks "Include steps grid" in the stats window
+  (off by default, as it hints at the route; saved as `turdle-share-grid`).
 - "See yesterday's answer" (stats window) shows yesterday's par route, plus the player's own ladder from
   `turdle-past` (localStorage, last 7 daily games). Never reset `word_ladder_stats` or `turdle-progress`: they hold streaks.
 - Streaks are date-aware: `word_ladder_stats.lastDaily` is the last daily counted. A replay of the same date is not

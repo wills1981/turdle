@@ -188,3 +188,9 @@ button { touch-action: manipulation; -webkit-touch-callout: none; }
 .notice-pop-up p + p, .notice-pop-up p + img, .notice-pop-up img + p { margin-top: .75rem; }
 .notice-pop-up img { display: block; max-width: 100%; height: auto; margin-left: auto; margin-right: auto; }
 .notice-pop-up a { color: var(--teal-dark); text-decoration: underline; }
+
+/* Stats window: opt-in steps grid for shared results */
+.share-grid-toggle { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: .4rem;
+  min-height: 2.25rem; font-size: .85rem; font-weight: 600; color: var(--ink); cursor: pointer; }
+.share-grid-toggle input { width: 1.1rem; height: 1.1rem; accent-color: var(--teal); cursor: pointer; }
+.share-grid-toggle span { font-weight: 400; font-size: .75rem; color: var(--ink-soft); }

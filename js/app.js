@@ -93,6 +93,11 @@ function setupEventListeners() {
   document.getElementById('btn-share').addEventListener('click', handleShare);
   document.getElementById('btn-share-whatsapp').addEventListener('click', handleShareWhatsApp);
   document.getElementById('btn-copy').addEventListener('click', handleCopy);
+  const shareGrid = document.getElementById('share-grid');
+  shareGrid.checked = shareGridOn();
+  shareGrid.addEventListener('change', () => {
+    try { localStorage.setItem(SHARE_GRID_KEY, shareGrid.checked ? 'on' : 'off'); } catch (e) { /* not remembered */ }
+  });
   document.getElementById('btn-yesterday').addEventListener('click', showYesterday);
   document.getElementById('btn-next-ready').addEventListener('click', () => location.reload());
   document.getElementById('btn-theme').addEventListener('click', showTheme);
@@ -1134,6 +1139,12 @@ function startCountdown() {
   countdownTimer = setInterval(tick, 1000);
 }
 
+// The 🟩/⬜ steps grid hints at which letters change, so it's opt-in (stats window checkbox)
+const SHARE_GRID_KEY = 'turdle-share-grid';
+function shareGridOn() {
+  try { return localStorage.getItem(SHARE_GRID_KEY) === 'on'; } catch (e) { return false; }
+}
+
 function buildShareText() {
   const steps = gameState.history.length - 1;
   const par = gameState.parMoves;
@@ -1162,8 +1173,10 @@ function buildShareText() {
   }
   // Spoiler-free path: one row per word, 🟩 where the letter already matches the target
   const target = gameState.targetWord;
-  for (const word of gameState.history) {
-    lines.push([...word].map((c, i) => (c === target[i] ? '🟩' : '⬜')).join(''));
+  if (shareGridOn()) {
+    for (const word of gameState.history) {
+      lines.push([...word].map((c, i) => (c === target[i] ? '🟩' : '⬜')).join(''));
+    }
   }
   lines.push('', location.origin + location.pathname.replace(/[^/]*$/, '') + query); // drop any index.html
   return lines.join('\n');
