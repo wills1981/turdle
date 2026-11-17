@@ -15,7 +15,7 @@
 #<img src="image.png" width="50">
 #";
 
-2026-11-17:: "
+2026-11-17: "
 <h2>Happy Tuesday Turdlers!! 💩</h2>
 <p>Due to popular demand and feedback from players Paul and Shelley, <strong>3-letter</strong> puzzles have now been ditched in favour of <strong>4-6 letter</strong> puzzles.</p>
 <br>
