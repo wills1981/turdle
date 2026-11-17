@@ -50,7 +50,7 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
 2026-11-11|FIB|NOB
 ```
 - One puzzle per day. Dates must be consecutive with no gaps or duplicates, in ascending order.
-- Words are UPPERCASE, the same length, 4–7 letters (3s only in the past schedule). Lines starting with `#` are comments.
+- Words are UPPERCASE, the same length, 4–6 letters (3s only in the past schedule; 7s are allowed but none are fair). Lines starting with `#` are comments.
 - A missing date falls back to a built-in schedule in `js/app.js`, so don't leave gaps.
 
 ### Theme
@@ -59,18 +59,17 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
 - At least one of start/target must be silly; the other can be an everyday word from `common-N.txt`
   (the generator prefers both silly, 3:1).
 - Cheeky is fine; hateful is not. Never use anything in `tools/blocklist.txt` or any slur.
-- Mostly 4s and 5s, a 6 now and then, and a 7 every 3–6 weeks (`GEN_LENGTHS`, `MIN_GAP_DAYS`, `DUE_DAYS`).
-  No new 3-letter puzzles.
+- Mostly 4s and 5s, with a 6 now and then (`GEN_LENGTHS`). No new 3-letter puzzles. No 7s: with no shared
+  positions they'd need par 7+, and no fair 7-letter pairs exist.
 - Start/target words only need to be in `dictionary-N.txt`; they don't need to be common.
 
 ### Fairness rules (puzzles must not be so hard that players give up)
 Enforced by `tools/puzzles.py check`; the constants live at the top of that file.
-- **Par** (shortest route through common words): 5–6 for 3-letter puzzles (kept tricky; the generator favours 6),
-  4–6 for 4–6 letters. Par 3 felt too easy; par 7+ makes players give up.
-- **No shared letter positions** for 3–5 letters: start and target never have the same letter in the same position
-  (e.g. SPUD→SOCK is out). Long words can't do that within par 6, so from 2026-11-17 (`LONG_RULES_FROM`)
-  6s may share 1 position and 7s 3 (`MAX_SHARED`). Puzzles before 2026-11-13 predate this rule and the 3-letter
-  par minimum (`NEW_RULES_FROM` in `tools/puzzles.py`).
+- **Par** (shortest route through common words): 5–8 from 2026-11-18 (`HARDER_FROM`), weighted toward 6
+  (`PAR_WEIGHTS`). Earlier 4–6 letter puzzles were par 4–6, which felt too easy; 3-letter ones were 5–6.
+- **No shared letter positions**: start and target never have the same letter in the same position
+  (e.g. SPUD→SOCK is out). A green letter at the start is a bad experience. Puzzles before 2026-11-13 predate
+  this rule and the 3-letter par minimum (`NEW_RULES_FROM` in `tools/puzzles.py`).
 - **At least 2 distinct shortest routes**, so one wrong turn isn't fatal.
 - **Route words must be everyday words**: the par route goes only through `common-N.txt`.
   Words that only connect via obscure words (e.g. EGGS needs ERGS, BREATH is a near-island) are out.
@@ -84,7 +83,8 @@ Enforced by `tools/puzzles.py check`; the constants live at the top of that file
    ```
    Or edit `puzzles.txt` by hand for themed days (e.g. Christmas).
    To swap out every future puzzle of some length (other days keep their words):
-   `python3 tools/puzzles.py replace --from 2026-11-17 --lengths 3 --seed 17`
+   `python3 tools/puzzles.py replace --from 2026-11-18 --lengths 4,5,6,7 --seed 18`
+   `replace` never touches 25/26 Dec or 1 Jan (`KEEP_DAYS`), which are hand-picked Christmas puzzles.
 2. **Always validate before committing:**
    ```bash
    python3 tools/puzzles.py check

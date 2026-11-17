@@ -26,33 +26,29 @@ HEADER = "# Date (YYYY-MM-DD) | Start Word | Target Word"
 
 # --- Fairness rules -------------------------------------------------------
 LENGTHS = (3, 4, 5, 6, 7)            # lengths check accepts (3s are in the past schedule)
-GEN_LENGTHS = {4: 10, 5: 10, 6: 3, 7: 1}  # lengths the generator picks, with weights (6s/7s now and then)
-MIN_GAP_DAYS = {7: 21}   # 7s are tricky: at least 3 weeks apart...
-DUE_DAYS = {7: 35}       # ...and picked first once 5 weeks have passed, so one lands every 3-6 weeks
-MIN_PAR = {3: 5, 4: 4, 5: 4, 6: 4, 7: 4}   # 3-letter puzzles are short, so make them work harder
-MAX_PAR = {3: 6, 4: 6, 5: 6, 6: 6, 7: 6}
+# lengths the generator picks, with weights (6s now and then). No 7s: with no shared positions they need
+# par 7+ and no fair pairs exist. To bring them back, add 7 here plus e.g. MIN_GAP_DAYS {7: 21}, DUE_DAYS {7: 35}.
+GEN_LENGTHS = {4: 10, 5: 10, 6: 3}
+MIN_GAP_DAYS = {}        # length -> min days between puzzles of that length
+DUE_DAYS = {}            # length -> pick it first once this many days have passed
+KEEP_DAYS = {"12-25", "12-26", "01-01"}  # hand-picked themed days (MM-DD) that replace never touches
+MIN_PAR = {3: 5, 4: 5, 5: 5, 6: 5, 7: 5}   # from HARDER_FROM (before that: 4, and 5 for 3s)
+MAX_PAR = {3: 6, 4: 8, 5: 8, 6: 8, 7: 8}
 MIN_ROUTES = 2           # distinct shortest routes, so one wrong turn isn't fatal
 MAX_WORD_USES = 2        # times a word may appear as start/target in the file
 # generator weights by par: favour mid-length ladders, but push 3-letter ones as long as possible
-PAR_WEIGHTS = {3: {5: 1, 6: 2}, 4: {4: 3, 5: 3, 6: 1}, 5: {4: 3, 5: 3, 6: 1}, 6: {4: 3, 5: 3, 6: 1},
-               7: {4: 3, 5: 3, 6: 1}}
+HARDER = {5: 2, 6: 3, 7: 2, 8: 1}  # mostly par 6, some 5s and 7s, the odd 8
+PAR_WEIGHTS = {3: {5: 1, 6: 2}, 4: HARDER, 5: HARDER, 6: HARDER, 7: HARDER}
 # start and target share no letter in the same position
 # puzzles before this date predate this rule and the 3-letter MIN_PAR of 5 (they used 4), so are exempt
 NEW_RULES_FROM = dt.date(2026, 11, 13)
-# Long words can't get from start to target within par 6 without some letters staying put
-# (n letters all different needs par >= n), so from this date 6s and 7s may share a few positions.
-LONG_RULES_FROM = dt.date(2026, 11, 17)
-MAX_SHARED = {6: 1, 7: 3}  # positions start and target may share, by length (others: 0)
+# puzzles from this date are harder: par 5+ (MIN_PAR); earlier ones keep the old minimum
+HARDER_FROM = dt.date(2026, 11, 18)
 # ---------------------------------------------------------------------------
 
 
 def shared_positions(start, target):
     return [i + 1 for i, (a, b) in enumerate(zip(start, target)) if a == b]
-
-
-def max_shared(n, date=None):
-    """How many letter positions start and target may share (date None = a new puzzle)."""
-    return MAX_SHARED.get(n, 0) if date is None or date >= LONG_RULES_FROM else 0
 
 
 ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -111,13 +107,12 @@ def fairness_problems(start, target, result, date=None):
     new_rules = date is None or date >= NEW_RULES_FROM
     if new_rules:
         shared = shared_positions(start, target)
-        if len(shared) > max_shared(n, date):
-            problems.append(f"shares a letter in position {', '.join(map(str, shared))}"
-                            f" (max {max_shared(n, date)})")
+        if shared:
+            problems.append(f"shares a letter in position {', '.join(map(str, shared))}")
     if result is None:
         return problems + ["no route through common words"]
     par, routes, _ = result
-    min_par = MIN_PAR[n] if new_rules else 4
+    min_par = (MIN_PAR[n] if date is None or date >= HARDER_FROM else 5 if n == 3 else 4) if new_rules else 4
     if not min_par <= par <= MAX_PAR[n]:
         problems.append(f"par {par} outside {min_par}-{MAX_PAR[n]}")
     if routes < MIN_ROUTES:
@@ -220,7 +215,7 @@ def fair_pairs():
             plain = {w for w in common if not plain_word_too_dull(w)}
             for t in (plain | silly_set) - blocked - {s}:
                 key = frozenset((s, t))
-                if key in found or len(shared_positions(s, t)) > max_shared(n):
+                if key in found or shared_positions(s, t):
                     continue
                 if t in common:
                     ok = t in dist and MIN_PAR[n] <= dist[t] <= MAX_PAR[n] and ways[t] >= MIN_ROUTES
@@ -281,7 +276,7 @@ def replace(from_date, lengths, seed=None):
     last_seen = {n: from_date - dt.timedelta(days=DUE_DAYS[n] - 14) for n in DUE_DAYS}  # first one ~2 weeks in
     for d, s, t in entries:
         day = dt.date.fromisoformat(d)
-        if day >= from_date and len(s) in lengths:
+        if day >= from_date and len(s) in lengths and d[5:] not in KEEP_DAYS:
             uses.subtract((s, t))  # freed up (the old pair stays in used_pairs, so it isn't reused)
             pair = pick_pair(rng, pairs_by_len, uses, used_pairs, day, last_seen)
             if not pair:

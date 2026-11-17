@@ -18,10 +18,7 @@
 2026-11-17: "
 <center style="font-size:50px;line-height:1;">💩</center>
 <h2>Happy Tuesday Turdlers!! </h2>
-<p>Due to popular demand and feedback from players Paul and Shelley, <strong>3-letter</strong> puzzles have now been ditched in favour of <strong>4-6 letter</strong> puzzles.</p>
-<br>
-<h3>7-letter puzzles</h3>
-<p>To keep things even more exciting, the occasional <strong>7 letter</strong> puzzle will be thrown in every so often!</p>
+<p>Due to popular demand and feedback from players Paul and Shelley, <strong>3-letter</strong> puzzles have now been ditched in favour of <strong>4-6 letter</strong> puzzles. General difficulty is going to be increased from tomorrow onwards without making the puzzles too tricky!</p>
 <p>Have fun and <strong>HAPPY TURDLING!!!</strong></p>
 
 ";
