@@ -144,6 +144,15 @@ function todayUK() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: UK_TZ }).format(new Date()); // YYYY-MM-DD
 }
 
+// Local testing only: ?date=YYYY-MM-DD plays that day's puzzle. Ignored anywhere but localhost,
+// and nothing is saved while previewing (no stats, streak, progress or archive).
+const PREVIEW_DATE = (() => {
+  if (!['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)) return null;
+  const d = new URLSearchParams(location.search).get('date');
+  return /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d : null;
+})();
+const puzzleDate = () => PREVIEW_DATE || todayUK();
+
 function msUntilUKMidnight() {
   const parts = {};
   new Intl.DateTimeFormat('en-GB', { timeZone: UK_TZ, hourCycle: 'h23', hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -171,7 +180,7 @@ async function loadPuzzleMode(mode) {
   document.getElementById('mode-label').innerText = mode === 'daily' ? 'Daily' : 'Free Play';
 
   if (mode === 'daily') {
-    const todayStr = todayUK();
+    const todayStr = puzzleDate();
     let dailyPair = null;
 
     try {
@@ -246,6 +255,13 @@ function initGameSession() {
   
   // Stretchy days keep their rules on screen all day
   document.getElementById('stretchy-rules').classList.toggle('hidden', !gameState.stretchy);
+  if (PREVIEW_DATE && !document.getElementById('preview-ribbon')) {
+    const ribbon = document.createElement('div');
+    ribbon.id = 'preview-ribbon';
+    ribbon.className = 'preview-ribbon';
+    ribbon.innerText = `PREVIEW ${PREVIEW_DATE} · not saved`;
+    document.body.appendChild(ribbon);
+  }
   document.getElementById('grid-hint').innerText = gameState.stretchy
     ? 'Change, add or remove 1 letter!' : 'Change 1 letter to shift the word!';
 
@@ -463,6 +479,7 @@ function puzzleId() {
 }
 
 function saveProgress() {
+  if (PREVIEW_DATE) return; // previews never save
   try {
     localStorage.setItem(PROGRESS_KEY, JSON.stringify({
       id: puzzleId(),
@@ -503,6 +520,7 @@ function archiveSavedProgress() {
 }
 
 function restoreProgress() {
+  if (PREVIEW_DATE) return; // previews always start fresh and leave the real game alone
   archiveSavedProgress();
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem(PROGRESS_KEY)); } catch (e) { return; }
@@ -984,7 +1002,7 @@ function ladderElement(words, target) {
 }
 
 async function showYesterday() {
-  const date = dayBefore(todayUK());
+  const date = dayBefore(puzzleDate());
   const el = id => document.getElementById(id);
   hideModals();
   showModal('modal-yesterday');
@@ -1069,7 +1087,7 @@ async function loadNotice() {
     const res = await fetch('alerts.txt');
     if (!res.ok) return;
     const alerts = parseAlerts(await res.text());
-    const today = todayUK();
+    const today = puzzleDate();
     const weekday = WEEKDAYS[new Date(today + 'T12:00:00Z').getUTCDay()];
     const key = alerts[today] !== undefined ? today : alerts[weekday] !== undefined ? weekday : null;
     if (!key || !alerts[key]) return;
@@ -1145,10 +1163,12 @@ function countDaily() {
 }
 
 function saveStats() {
+  if (PREVIEW_DATE) return;
   localStorage.setItem('word_ladder_stats', JSON.stringify(userStats));
 }
 
 function recordWin(parDiff) {
+  if (PREVIEW_DATE) return;
   if (!countDaily()) return;
   userStats.played++;
   userStats.wins++;
@@ -1161,6 +1181,7 @@ function recordWin(parDiff) {
 }
 
 function recordLoss() {
+  if (PREVIEW_DATE) return;
   if (!countDaily()) return;
   userStats.played++;
   userStats.streak = 0;
