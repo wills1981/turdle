@@ -79,6 +79,8 @@ body {
 @media (max-width: 380px) { .tile { width: 48px; height: 48px; font-size: 1.3rem; } }
 /* letter already matches the target in this position */
 .tile-match   { background: var(--teal); color: #fff; border-color: var(--teal-dark); }
+/* stretchy days: the letter changed or added this turn */
+.tile-changed { background: #e3f5f0; border-color: var(--teal); border-bottom-color: var(--teal-dark); color: var(--teal-dark); }
 .tile-target  { background: var(--green); color: #fff; border-color: var(--green-dark); }
 .tile-typed   { border-color: var(--teal); border-bottom-color: var(--teal-dark); }
 .tile-empty   { background: rgba(255,255,255,.5); border-style: dashed; border-bottom-width: 2px; border-color: #e2dbcf; color: transparent; }
@@ -194,3 +196,9 @@ button { touch-action: manipulation; -webkit-touch-callout: none; }
   min-height: 2.25rem; font-size: .85rem; font-weight: 600; color: var(--ink); cursor: pointer; }
 .share-grid-toggle input { width: 1.1rem; height: 1.1rem; accent-color: var(--teal); cursor: pointer; }
 .share-grid-toggle span { font-weight: 400; font-size: .75rem; color: var(--ink-soft); }
+
+/* Stretchy days: rules banner under the start/target card */
+.stretchy-rules { width: 100%; margin-top: .6rem; padding: .4rem .75rem; border-radius: 14px; background: #e3f5f0; border: 2px solid var(--teal); color: var(--ink); font-size: .85rem; line-height: 1.3; text-align: center; }
+.stretchy-moves { display: flex; flex-wrap: wrap; justify-content: center; gap: .35rem; margin: .25rem 0 .15rem; }
+.stretchy-moves span { background: #fff; border-radius: 999px; padding: .1rem .55rem; font-weight: 700; font-size: .8rem; white-space: nowrap; }
+.stretchy-small { font-size: .75rem; color: var(--ink-soft); font-weight: 700; }

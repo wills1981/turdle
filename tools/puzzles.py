@@ -24,7 +24,7 @@ SILLY_WORDS = Path(__file__).resolve().parent / "silly_words.txt"
 BLOCKLIST = Path(__file__).resolve().parent / "blocklist.txt"
 HEADER = "# Date (YYYY-MM-DD) | Start Word | Target Word"
 
-# --- Fairness rules -------------------------------------------------------
+# --- Fairness rules (mirrored in gen-puz/index.html: keep in sync) --------
 LENGTHS = (3, 4, 5, 6, 7)            # lengths check accepts (3s are in the past schedule)
 # lengths the generator picks, with weights (6s now and then). No 7s: with no shared positions they need
 # par 7+ and no fair pairs exist. To bring them back, add 7 here plus e.g. MIN_GAP_DAYS {7: 21}, DUE_DAYS {7: 35}.
@@ -35,7 +35,9 @@ KEEP_DAYS = {"12-25", "12-26", "01-01"}  # hand-picked themed days (MM-DD) that 
 MIN_PAR = {3: 5, 4: 5, 5: 5, 6: 5, 7: 5}   # from HARDER_FROM (before that: 4, and 5 for 3s)
 MAX_PAR = {3: 6, 4: 8, 5: 8, 6: 8, 7: 8}
 MIN_ROUTES = 2           # distinct shortest routes, so one wrong turn isn't fatal
-MAX_WORD_USES = 2        # times a word may appear as start/target in the file
+MAX_WORD_USES = 2        # times a word may appear as start/target within REPEAT_DAYS
+REPEAT_DAYS = 30         # repeats further apart than this are fine: players will have forgotten
+                         # (check only; generate/replace still avoid repeats across the whole file)
 # generator weights by par: favour mid-length ladders, but push 3-letter ones as long as possible
 HARDER = {5: 2, 6: 3, 7: 2, 8: 1}  # mostly par 6, some 5s and 7s, the odd 8
 PAR_WEIGHTS = {3: {5: 1, 6: 2}, 4: HARDER, 5: HARDER, 6: HARDER, 7: HARDER}
@@ -70,29 +72,50 @@ def blocklist():
             if l.strip() and not l.startswith("#")}
 
 
-def explore(start, pool):
+def neighbours(w, stretchy=False):
+    """Words one move from w: change a letter; stretchy puzzles may also add or drop one
+    (staying within LENGTHS). Mirrors neighbours() in js/app.js and gen-puz/index.html."""
+    out = {w[:i] + c + w[i + 1:] for i in range(len(w)) for c in ALPHABET if c != w[i]}
+    if stretchy:
+        if len(w) < max(LENGTHS):
+            out |= {w[:i] + c + w[i:] for i in range(len(w) + 1) for c in ALPHABET}
+        if len(w) > min(LENGTHS):
+            out |= {w[:i] + w[i + 1:] for i in range(len(w))}
+    return out
+
+
+def explore(start, pool, stretchy=False):
     """BFS from start through pool. Returns (dist, ways, parent) maps."""
     dist, ways, parent = {start: 0}, {start: 1}, {start: None}
     q = deque([start])
     while q:
         cur = q.popleft()
-        for i in range(len(cur)):
-            for c in ALPHABET:
-                nxt = cur[:i] + c + cur[i + 1:]
-                if nxt == cur or nxt not in pool:
-                    continue
-                if nxt not in dist:
-                    dist[nxt], ways[nxt], parent[nxt] = dist[cur] + 1, ways[cur], cur
-                    q.append(nxt)
-                elif dist[nxt] == dist[cur] + 1:
-                    ways[nxt] += ways[cur]
+        for nxt in neighbours(cur, stretchy):
+            if nxt not in pool:
+                continue
+            if nxt not in dist:
+                dist[nxt], ways[nxt], parent[nxt] = dist[cur] + 1, ways[cur], cur
+                q.append(nxt)
+            elif dist[nxt] == dist[cur] + 1:
+                ways[nxt] += ways[cur]
     return dist, ways, parent
+
+
+def is_stretchy(start, target):
+    """Different lengths: each turn may change, add or drop one letter (hand-picked special days)."""
+    return len(start) != len(target)
+
+
+def stretchy_pool():
+    return set().union(*(words("common", n) for n in LENGTHS))
 
 
 def analyse(start, target):
     """(par, number of shortest routes, one route) through common words, or None."""
-    n = len(start)
-    dist, ways, parent = explore(start, words("common", n) | {start, target})
+    if is_stretchy(start, target):
+        dist, ways, parent = explore(start, stretchy_pool() | {start, target}, stretchy=True)
+    else:
+        dist, ways, parent = explore(start, words("common", len(start)) | {start, target})
     if target not in dist:
         return None
     path = [target]
@@ -102,10 +125,10 @@ def analyse(start, target):
 
 
 def fairness_problems(start, target, result, date=None):
-    n = len(start)
+    n = max(len(start), len(target))
     problems = []
     new_rules = date is None or date >= NEW_RULES_FROM
-    if new_rules:
+    if new_rules and not is_stretchy(start, target):  # positions don't line up across lengths
         shared = shared_positions(start, target)
         if shared:
             problems.append(f"shares a letter in position {', '.join(map(str, shared))}")
@@ -132,7 +155,7 @@ def parse(path=PUZZLES):
 
 def check(path=PUZZLES, verbose=True):
     """Validate puzzles.txt against every rule. Returns True if it passes."""
-    errors, uses, pairs, prev = [], Counter(), set(), None
+    errors, prev, recent = [], None, deque()  # recent: (date, start, target) within REPEAT_DAYS
     blocked = blocklist()
     pars = Counter()
     for lineno, *fields in parse(path):
@@ -153,25 +176,33 @@ def check(path=PUZZLES, verbose=True):
         if start != start.upper() or target != target.upper():
             problems.append("words must be uppercase")
         start, target = start.upper(), target.upper()
-        n = len(start)
-        if len(target) != n or n not in LENGTHS:
-            errors.append(f"{where}: words must be the same length, 3-7 letters")
+        if len(start) not in LENGTHS or len(target) not in LENGTHS:
+            errors.append(f"{where}: words must be 3-7 letters")
             continue
-        problems += [f"{w} is not in dictionary-{n}.txt" for w in (start, target) if w not in words("dictionary", n)]
+        # Words outside the dictionary are allowed (e.g. names for fun): the game accepts the day's own
+        # start and target. They're flagged in the listing so typos still stand out.
+        notes = [f"{w} not in dictionary (name? check spelling)" for w in (start, target) if w not in words("dictionary", len(w))]
         problems += [f"{w} is blocklisted" for w in (start, target) if w in blocked]
-        if frozenset((start, target)) in pairs:
-            problems.append("pair already used")
-        pairs.add(frozenset((start, target)))
-        uses.update((start, target))
+        while recent and (date - recent[0][0]).days >= REPEAT_DAYS:
+            recent.popleft()
+        if any(frozenset((s, t)) == frozenset((start, target)) for _, s, t in recent):
+            problems.append(f"pair already used within {REPEAT_DAYS} days")
+        for w in {start, target}:
+            count = sum((s, t).count(w) for _, s, t in recent) + (start, target).count(w)
+            if count > MAX_WORD_USES:
+                problems.append(f"{w} used {count} times within {REPEAT_DAYS} days (max {MAX_WORD_USES})")
+        recent.append((date, start, target))
         result = analyse(start, target)
         problems += fairness_problems(start, target, result, date)
         if result:
             pars[result[0]] += 1
         if verbose:
             desc = f"par {result[0]}, {result[1]} routes  {' > '.join(result[2])}" if result else "NO ROUTE"
-            print(f"  {date} {start:>6} -> {target:<6} {desc}{'  !! ' + '; '.join(problems) if problems else ''}")
+            if is_stretchy(start, target):
+                desc = "(stretchy) " + desc
+            print(f"  {date} {start:>6} -> {target:<6} {desc}{'  !! ' + '; '.join(problems) if problems else ''}"
+                  f"{'  (' + '; '.join(notes) + ')' if notes else ''}")
         errors += [f"{where} ({date} {start}->{target}): {p}" for p in problems]
-    errors += [f"{w} used {c} times (max {MAX_WORD_USES})" for w, c in uses.items() if c > MAX_WORD_USES]
     if verbose:
         print(f"\n{sum(pars.values())} puzzles, pars {dict(sorted(pars.items()))}")
         print("\n".join(["\nPROBLEMS:"] + errors) if errors else "All puzzles pass the fairness rules.")
@@ -276,7 +307,8 @@ def replace(from_date, lengths, seed=None):
     last_seen = {n: from_date - dt.timedelta(days=DUE_DAYS[n] - 14) for n in DUE_DAYS}  # first one ~2 weeks in
     for d, s, t in entries:
         day = dt.date.fromisoformat(d)
-        if day >= from_date and len(s) in lengths and d[5:] not in KEEP_DAYS:
+        # stretchy days are hand-picked, like KEEP_DAYS, so replace leaves them alone
+        if day >= from_date and len(s) in lengths and len(t) == len(s) and d[5:] not in KEEP_DAYS:
             uses.subtract((s, t))  # freed up (the old pair stays in used_pairs, so it isn't reused)
             pair = pick_pair(rng, pairs_by_len, uses, used_pairs, day, last_seen)
             if not pair:

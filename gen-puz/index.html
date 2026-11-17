@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Turdle puzzle helper</title>
+  <link rel="icon" type="image/svg+xml" href="../icons/icon.svg">
+  <style>
+    :root { --bg: #fdf6ec; --card: #fff; --ink: #2d2a26; --muted: #7a7268; --teal: #0d9488; --line: #e7dccb; --warn-bg: #fff4e0; --warn: #9a5b00; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 system-ui, -apple-system, Segoe UI, sans-serif; }
+    main { max-width: 640px; margin: 0 auto; padding: 20px 16px 48px; }
+    h1 { font-size: 1.4rem; margin: 0 0 4px; }
+    .sub { color: var(--muted); margin: 0 0 14px; font-size: 0.9rem; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .tabs button { flex: 1; background: var(--card); border: 1px solid var(--line); color: var(--muted); font-weight: 700; padding: 8px; }
+    .tabs button[aria-selected=true] { background: var(--teal); border-color: var(--teal); color: #fff; }
+    [hidden] { display: none !important; }
+    form { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 12px; }
+    label.field { display: grid; gap: 4px; font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    input[type=text], input[type=date] { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; width: 100%; min-width: 0; background: #fff; color: var(--ink); }
+    #word { text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; font-size: 1.2rem; }
+    fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 4px; min-width: 0; }
+    legend { font-size: 0.85rem; font-weight: 600; color: var(--muted); padding: 0; margin-bottom: 4px; }
+    .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+    .seg label { display: flex; align-items: center; gap: 4px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer; font-size: 0.9rem; }
+    .seg input, .check input { accent-color: var(--teal); margin: 0; }
+    .seg label:has(input:checked) { border-color: var(--teal); background: #e6f6f4; }
+    .check { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; cursor: pointer; }
+    .check small { color: var(--muted); }
+    select { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); max-width: 100%; }
+    button { font: inherit; cursor: pointer; border: 0; border-radius: 8px; }
+    .go { background: var(--teal); color: #fff; font-weight: 700; padding: 10px; }
+    .go:disabled { opacity: 0.6; cursor: wait; }
+    .note { font-size: 0.85rem; color: var(--muted); margin: 0; }
+    .warnings:empty, .status:empty { display: none; }
+    .warnings { margin: 14px 0 0; padding: 10px 12px; background: var(--warn-bg); color: var(--warn); border-radius: 8px; font-size: 0.9rem; }
+    .warnings p { margin: 2px 0; }
+    .status { margin: 14px 0 0; color: var(--muted); font-size: 0.9rem; }
+    ul { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 8px; }
+    li { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; }
+    .w { font-weight: 800; letter-spacing: 0.08em; }
+    .tag { font-size: 0.7rem; font-weight: 700; background: #fde7c2; color: #8a4b00; border-radius: 999px; padding: 1px 7px; margin-left: 6px; letter-spacing: 0; vertical-align: 2px; }
+    .tag.stretchy { background: #dcefff; color: #1d4f80; }
+    .tag.kept { background: #eee; color: #555; }
+    .tag.fail { background: #fde2e2; color: #9b1c1c; }
+    .meta { font-size: 0.85rem; color: var(--muted); }
+    .route { grid-column: 1 / -1; font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
+    .copy { grid-row: 1 / span 2; grid-column: 2; background: #e6f6f4; color: var(--teal); font-weight: 700; padding: 8px 12px; }
+    #toast { position: fixed; left: 50%; top: 16px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 0.9rem; white-space: nowrap; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 10; }
+    #toast.show { opacity: 1; }
+    footer { margin-top: 24px; font-size: 0.8rem; color: var(--muted); }
+    code { background: #f1e8da; padding: 1px 4px; border-radius: 4px; }
+    .controls { margin: 14px 0 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; font-size: 0.9rem; }
+    .ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+    .ctl > span { font-weight: 600; color: var(--muted); font-size: 0.85rem; min-width: 52px; }
+    .ctl label { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+    .ctl input { accent-color: var(--teal); margin: 0; }
+    .linkish { background: none; color: var(--teal); font-weight: 600; padding: 2px 4px; text-decoration: underline; }
+    .hide-routes .route { display: none; }
+    #batch-text { width: 100%; min-height: 120px; font: 0.85rem/1.4 ui-monospace, Menlo, monospace; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); }
+    .batch-out { margin-top: 14px; display: grid; gap: 8px; }
+    .batch-out .bar { display: flex; gap: 8px; flex-wrap: wrap; }
+    .batch-out .bar button { background: #e6f6f4; color: var(--teal); font-weight: 700; padding: 8px 12px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Turdle puzzle helper</h1>
+  <p class="sub">Find fair puzzles and copy the lines into <code>puzzles.txt</code>.</p>
+
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" aria-selected="true" data-tab="one">One word</button>
+    <button type="button" role="tab" aria-selected="false" data-tab="batch">Batch</button>
+  </div>
+
+  <!-- ===== One word ===== -->
+  <section id="tab-one">
+    <form id="form" autocomplete="off">
+      <label class="field">Your word (any word, names welcome)
+        <input type="text" id="word" maxlength="7" required pattern="[A-Za-z]{3,7}" placeholder="e.g. FART or DAVE">
+      </label>
+      <fieldset>
+        <legend>Other word</legend>
+        <div class="seg">
+          <label><input type="radio" name="pool" value="silly" checked> Silly</label>
+          <label><input type="radio" name="pool" value="plain"> Everyday</label>
+          <label><input type="radio" name="pool" value="both"> Either</label>
+        </div>
+      </fieldset>
+      <label class="check"><input type="checkbox" id="stretchy"> Stretchy <small>(other word a different length; add/drop letters)</small></label>
+      <fieldset>
+        <legend>Your word is the</legend>
+        <div class="seg">
+          <label><input type="radio" name="side" value="start" checked> Start</label>
+          <label><input type="radio" name="side" value="target"> Target</label>
+        </div>
+      </fieldset>
+      <label class="field">Date
+        <input type="date" id="date">
+      </label>
+      <p class="note" id="date-note"></p>
+      <button class="go" id="go" type="submit">Find partners</button>
+    </form>
+
+    <div class="warnings" id="warnings"></div>
+    <p class="status" id="status"></p>
+    <div class="controls" id="controls" hidden>
+      <div class="ctl"><span>Sort</span>
+        <select id="sort">
+          <option value="suggested">Suggested (par 6 first)</option>
+          <option value="par-asc">Par: low → high</option>
+          <option value="par-desc">Par: high → low</option>
+          <option value="routes">Most routes</option>
+          <option value="length">Length</option>
+        </select>
+      </div>
+      <div class="ctl" id="par-filter"><span>Par</span>
+        <label><input type="checkbox" value="5"> 5</label>
+        <label><input type="checkbox" value="6"> 6</label>
+        <label><input type="checkbox" value="7"> 7</label>
+        <label><input type="checkbox" value="8"> 8</label>
+        <button type="button" class="linkish" id="clear-par">Clear</button>
+      </div>
+      <div class="ctl"><label><input type="checkbox" id="hide-routes"> Hide in-between words</label></div>
+    </div>
+    <ul id="results"></ul>
+  </section>
+
+  <!-- ===== Batch ===== -->
+  <section id="tab-batch" hidden>
+    <form id="batch-form" autocomplete="off">
+      <div class="row2">
+        <label class="field">From <input type="date" id="b-from" required></label>
+        <label class="field">To <input type="date" id="b-to" required></label>
+      </div>
+      <label class="field">Avoid repeats of puzzles from
+        <input type="date" id="b-compare" required>
+      </label>
+      <p class="note">Older puzzles are ignored, as players will have forgotten them. Default: 30 days before "From",
+        which matches <code>puzzles.py check</code>.</p>
+      <fieldset>
+        <legend>Lengths</legend>
+        <div class="seg" id="b-lengths">
+          <label><input type="checkbox" value="4" checked> 4</label>
+          <label><input type="checkbox" value="5" checked> 5</label>
+          <label><input type="checkbox" value="6" checked> 6</label>
+          <label><input type="checkbox" value="7"> 7</label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Other word</legend>
+        <div class="seg">
+          <label><input type="radio" name="bpool" value="silly"> Silly</label>
+          <label><input type="radio" name="bpool" value="plain"> Everyday</label>
+          <label><input type="radio" name="bpool" value="both" checked> Either</label>
+        </div>
+      </fieldset>
+      <label class="check"><input type="checkbox" id="b-stretchy"> Include stretchy puzzles</label>
+      <label class="field" id="b-stretchy-when-wrap" hidden>Stretchy on
+        <select id="b-stretchy-when">
+          <option value="sun">Sundays</option>
+          <option value="random">Random days (about 1 in 7)</option>
+          <option value="all">Every day</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="b-keep" checked> Keep Christmas days (25/26 Dec, 1 Jan) as scheduled</label>
+      <button class="go" id="b-go" type="submit">Generate batch</button>
+    </form>
+
+    <div class="warnings" id="b-warnings"></div>
+    <p class="status" id="b-status"></p>
+    <div class="batch-out" id="b-out" hidden>
+      <textarea id="batch-text" readonly></textarea>
+      <div class="bar">
+        <button type="button" id="b-copy">Copy all lines</button>
+        <button type="button" id="b-again">Regenerate</button>
+      </div>
+      <ul id="b-list"></ul>
+    </div>
+  </section>
+
+  <footer>
+    Uses the same rules as <code>tools/puzzles.py</code>: par 5–8 through everyday words, 2+ shortest routes,
+    no shared letter positions (except stretchy), and no pair repeated or word used more than twice within
+    30 days. Still run <code>python3 tools/puzzles.py check</code> after editing <code>puzzles.txt</code>.
+  </footer>
+</main>
+<div id="toast"></div>
+
+<script>
+// --- Rules: mirrored from tools/puzzles.py (and neighbours() from js/app.js). Keep in sync. ---
+const MIN_PAR = 5;
+const MAX_PAR = 8;
+const MIN_ROUTES = 2;
+const MAX_WORD_USES = 2;      // per REPEAT_DAYS
+const REPEAT_DAYS = 30;       // repeats further apart than this are fine
+const LENGTHS = [3, 4, 5, 6, 7];
+const GEN_LENGTHS = { 4: 10, 5: 10, 6: 3, 7: 1 };      // batch length weights (7 only if ticked)
+const PAR_WEIGHTS = { 5: 2, 6: 3, 7: 2, 8: 1 };         // HARDER
+const SILLY_PAIR_WEIGHT = 3;
+const KEEP_DAYS = new Set(['12-25', '12-26', '01-01']);
+const PAR_ORDER = [6, 5, 7, 8];
+const DULL_PLAIN_WORDS = new Set(`
+ADO AGO ALL AND ANY ARE ATE AYE BUT CAN DID DUE EGO ERA FOR FRO GOT HAD HAS HER HIM HIS HOW ILL INN
+ION ITS LET MAY NOR NOT NOW OFF OUR OUT OWE OWN PER SHE THE TOO TWO USE VIA WAS WHO WHY YES YET YOU
+ALSO BEEN FROM HAVE INTO JUST ONLY SOME THAN THAT THEM THEN THEY THIS UPON WERE WHAT WHEN WITH YOUR
+ABOUT AFTER THEIR THERE THESE THOSE WHICH WHILE WOULD COULD SHALL
+`.split(/\s+/).filter(Boolean));
+const plainTooDull = w => DULL_PLAIN_WORDS.has(w) || w.endsWith('ED');
+// ---------------------------------------------------------------------
+
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const $ = id => document.getElementById(id);
+const radio = name => document.querySelector(`input[name=${name}]:checked`).value;
+
+// ---------- Data ----------
+const cache = {};
+function text(path) {
+  if (!(path in cache)) {
+    cache[path] = fetch(path, { cache: 'no-cache' }).then(r => {
+      if (!r.ok) throw new Error(`Couldn't load ${path} (${r.status})`);
+      return r.text();
+    });
+  }
+  return cache[path];
+}
+const wordsOf = t => t.split('\n').filter(l => !l.trim().startsWith('#')).join('\n').toUpperCase().split(/\s+/).filter(Boolean);
+
+const setCache = {};
+function wordSet(path) {
+  if (!setCache[path]) setCache[path] = text(path).then(t => new Set(wordsOf(t)));
+  return setCache[path];
+}
+const dictionary = n => wordSet(`../dictionaries/dictionary-${n}.txt`);
+const common = n => wordSet(`../dictionaries/common-${n}.txt`);
+const blocklist = () => wordSet('../tools/blocklist.txt');
+
+let sillyCache;
+async function sillyWords() {   // silly words of every length that are in their dictionary
+  if (!sillyCache) {
+    sillyCache = (async () => {
+      const [all, blocked, dicts] = await Promise.all([wordSet('../tools/silly_words.txt'), blocklist(), Promise.all(LENGTHS.map(dictionary))]);
+      return new Set([...all].filter(w => LENGTHS.includes(w.length) && dicts[LENGTHS.indexOf(w.length)].has(w) && !blocked.has(w)));
+    })();
+  }
+  return sillyCache;
+}
+
+let allCommonCache;
+async function allCommon() {    // stretchy pool: everyday words of every length
+  if (!allCommonCache) allCommonCache = Promise.all(LENGTHS.map(common)).then(sets => new Set(sets.flatMap(s => [...s])));
+  return allCommonCache;
+}
+
+async function puzzles() {
+  const rows = [];
+  for (const line of (await text('../puzzles.txt')).split('\n')) {
+    const l = line.trim();
+    if (!l || l.startsWith('#')) continue;
+    const [date, start, target] = l.split('|').map(s => s.trim().toUpperCase());
+    if (date && start && target) rows.push({ date, start, target });
+  }
+  return rows;
+}
+
+// ---------- Dates ----------
+function todayUK() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date());
+}
+function addDays(iso, n) {
+  const d = new Date(iso + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+const daysBetween = (a, b) => Math.round((new Date(b + 'T12:00:00Z') - new Date(a + 'T12:00:00Z')) / 864e5);
+const isSunday = iso => new Date(iso + 'T12:00:00Z').getUTCDay() === 0;
+
+// ---------- Solver (same as tools/puzzles.py) ----------
+function neighbours(w, stretchy) {
+  const out = new Set();
+  for (let i = 0; i < w.length; i++) for (const c of ALPHABET) if (c !== w[i]) out.add(w.slice(0, i) + c + w.slice(i + 1));
+  if (stretchy) {
+    if (w.length < LENGTHS[LENGTHS.length - 1]) for (let i = 0; i <= w.length; i++) for (const c of ALPHABET) out.add(w.slice(0, i) + c + w.slice(i));
+    if (w.length > LENGTHS[0]) for (let i = 0; i < w.length; i++) out.add(w.slice(0, i) + w.slice(i + 1));
+  }
+  return out;
+}
+
+// BFS from start through pool, counting shortest routes (explore() in tools/puzzles.py)
+function explore(start, pool, stretchy) {
+  const dist = new Map([[start, 0]]), ways = new Map([[start, 1]]), parent = new Map([[start, null]]);
+  const queue = [start];
+  for (let h = 0; h < queue.length; h++) {
+    const cur = queue[h], d = dist.get(cur);
+    for (const n of neighbours(cur, stretchy)) {
+      if (!pool.has(n)) continue;
+      if (!dist.has(n)) { dist.set(n, d + 1); ways.set(n, ways.get(cur)); parent.set(n, cur); queue.push(n); }
+      else if (dist.get(n) === d + 1) ways.set(n, ways.get(n) + ways.get(cur));
+    }
+  }
+  return { dist, ways, parent };
+}
+
+function routeTo(word, parent) {
+  const path = [word];
+  while (parent.get(path[path.length - 1])) path.push(parent.get(path[path.length - 1]));
+  return path.reverse();
+}
+
+// par, routes and one route to t, as analyse() finds through common + {word, t}
+function analyse(t, pool, bfs, stretchy) {
+  if (pool.has(t) && bfs.dist.has(t)) return { par: bfs.dist.get(t), routes: bfs.ways.get(t), route: routeTo(t, bfs.parent) };
+  // t isn't an everyday word, so it can only be the last step: reach it from its reachable neighbours
+  let best = Infinity, routes = 0, via = null;
+  for (const n of neighbours(t, stretchy)) {
+    if (!bfs.dist.has(n)) continue;
+    const d = bfs.dist.get(n);
+    if (d < best) { best = d; routes = bfs.ways.get(n); via = n; }
+    else if (d === best) routes += bfs.ways.get(n);
+  }
+  return via ? { par: best + 1, routes, route: [...routeTo(via, bfs.parent), t] } : null;
+}
+
+const sharesPosition = (a, b) => [...a].some((c, i) => c === b[i]);
+const pairKey = (a, b) => [a, b].sort().join('|');
+
+// Every fair partner for word (ignoring repeats), cached. poolKind: silly | plain | both.
+const partnerCache = new Map();
+function fairPartners(word, poolKind, stretchy) {
+  const key = `${word}|${poolKind}|${stretchy}`;
+  if (!partnerCache.has(key)) partnerCache.set(key, computePartners(word, poolKind, stretchy));
+  return partnerCache.get(key);
+}
+
+async function computePartners(word, poolKind, stretchy) {
+  const n = word.length;
+  const lens = stretchy ? LENGTHS.filter(l => l !== n) : [n];
+  const [silly, blocked, pool] = await Promise.all([sillyWords(), blocklist(), stretchy ? allCommon() : common(n)]);
+  const candidates = new Set();
+  for (const l of lens) {
+    if (poolKind !== 'plain') silly.forEach(w => { if (w.length === l) candidates.add(w); });
+    if (poolKind !== 'silly') (await common(l)).forEach(w => { if (!plainTooDull(w) && !blocked.has(w)) candidates.add(w); });
+  }
+  const bfs = explore(word, new Set([...pool, word]), stretchy);
+  const out = [];
+  for (const t of candidates) {
+    if (t === word || (!stretchy && sharesPosition(word, t))) continue;
+    const a = analyse(t, pool, bfs, stretchy);
+    if (!a || a.par < MIN_PAR || a.par > MAX_PAR || a.routes < MIN_ROUTES) continue;
+    out.push({ word: t, silly: silly.has(t), ...a });
+  }
+  out.reachable = bfs.dist.size > 1;
+  return out;
+}
+
+// Uses and pairs among the given schedule rows
+function repeatsFrom(rows) {
+  const uses = new Map(), pairs = new Set();
+  for (const r of rows) {
+    for (const w of [r.start, r.target]) uses.set(w, (uses.get(w) || 0) + 1);
+    pairs.add(pairKey(r.start, r.target));
+  }
+  return { uses, pairs, used: w => uses.get(w) || 0 };
+}
+
+// ---------- UI helpers ----------
+let toastTimer;
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+async function copyText(textToCopy, label) {
+  try { await navigator.clipboard.writeText(textToCopy); toast(label); }
+  catch (err) { prompt('Copy this:', textToCopy); }
+}
+const yieldToUI = () => new Promise(r => setTimeout(r, 0));
+
+document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
+  $('tab-one').hidden = b.dataset.tab !== 'one';
+  $('tab-batch').hidden = b.dataset.tab !== 'batch';
+}));
+
+// ================= One word =================
+let current = null; // { word, results, empty }
+
+function lineFor(other) {
+  const word = current.word, date = $('date').value || '????-??-??';
+  return radio('side') === 'start' ? `${date}|${word}|${other}` : `${date}|${other}|${word}`;
+}
+
+async function updateDateNote() {
+  const date = $('date').value, note = $('date-note');
+  if (!date) { note.textContent = ''; return; }
+  const rows = await puzzles().catch(() => []);
+  const row = rows.find(r => r.date === date);
+  const live = date <= todayUK() ? ' ⚠️ This day is live or past: don\'t change it.' : '';
+  note.textContent = (row ? `Currently on ${date}: ${row.start} → ${row.target}.` : `Nothing scheduled on ${date} yet.`) + live;
+}
+
+async function run(e) {
+  e.preventDefault();
+  const word = $('word').value.trim().toUpperCase();
+  const pool = radio('pool');
+  const stretchy = $('stretchy').checked;
+  const n = word.length;
+  const warnings = [], warn = m => warnings.push(m);
+  $('results').innerHTML = '';
+  $('warnings').innerHTML = '';
+  $('controls').hidden = true;
+  current = null;
+  const min = stretchy ? 3 : 4;
+  if (!new RegExp(`^[A-Z]{${min},7}$`).test(word)) { $('status').textContent = `Enter a ${min}–7 letter word.`; return; }
+  $('go').disabled = true;
+  $('status').textContent = stretchy ? 'Working… (stretchy takes a moment)' : 'Working…';
+  await yieldToUI();
+  try {
+    const [dict, silly, blocked, rows] = await Promise.all([dictionary(n), sillyWords(), blocklist(), puzzles()]);
+    // repeats only count within REPEAT_DAYS of the chosen date (not the day being replaced)
+    const date = $('date').value || addDays(todayUK(), 1);
+    const nearby = rows.filter(r => r.date !== date && Math.abs(daysBetween(r.date, date)) < REPEAT_DAYS);
+    const rep = repeatsFrom(nearby);
+
+    const isName = !dict.has(word); // fine: the game always accepts the day's own start and target
+    if (isName) warn(`${word} isn't in the dictionary. That's fine for a name, but check the spelling.`);
+    if (blocked.has(word)) warn(`${word} is blocklisted.`);
+    if (rep.used(word) >= MAX_WORD_USES) warn(`${word} is already used ${rep.used(word)} times within ${REPEAT_DAYS} days of ${date} (max ${MAX_WORD_USES}).`);
+    if (pool === 'plain' && !silly.has(word) && !isName) warn(`${word} isn't in silly_words.txt, so neither word would be silly.`);
+    if (n === 7 && !stretchy) warn('7-letter puzzles rarely have fair partners (no shared positions needs par 7+).');
+
+    const all = await fairPartners(word, pool, stretchy);
+    const results = all.filter(r => rep.used(r.word) < MAX_WORD_USES && !rep.pairs.has(pairKey(word, r.word)));
+    current = { word, results, stretchy };
+    current.empty = !all.reachable
+      ? `No everyday word is one move away from ${word}, so a ladder can't start from it.`
+      : `No fair partners for ${word}. Try "Either"${stretchy ? '' : ', "Stretchy"'}, or another word.`;
+    $('warnings').innerHTML = warnings.map(m => `<p>${m}</p>`).join('');
+    render();
+  } catch (err) {
+    $('status').textContent = err.message;
+  } finally {
+    $('go').disabled = false;
+  }
+}
+
+const SORTS = {
+  suggested: (a, b) => PAR_ORDER.indexOf(a.par) - PAR_ORDER.indexOf(b.par),
+  'par-asc': (a, b) => a.par - b.par,
+  'par-desc': (a, b) => b.par - a.par,
+  routes: () => 0,
+  length: (a, b) => a.word.length - b.word.length,
+};
+
+// Sort, filter and draw the current results (no recalculation)
+function render() {
+  if (!current) return;
+  const { word, results } = current;
+  const pars = [...document.querySelectorAll('#par-filter input:checked')].map(i => +i.value);
+  const shown = results.filter(r => !pars.length || pars.includes(r.par))
+    .sort((a, b) => SORTS[$('sort').value](a, b) || b.routes - a.routes || a.word.localeCompare(b.word));
+  $('controls').hidden = !results.length;
+  $('results').classList.toggle('hide-routes', $('hide-routes').checked);
+  const total = `${results.length} fair partner${results.length === 1 ? '' : 's'} for ${word}`;
+  $('status').textContent = !results.length ? current.empty
+    : shown.length === results.length ? `${total}. Tap Copy to grab the line.`
+    : `Showing ${shown.length} of ${total} (par ${pars.join(', ')}).`;
+  $('results').innerHTML = shown.map(r => `
+    <li>
+      <div><span class="w">${r.word}</span>${r.silly ? '<span class="tag">silly</span>' : ''}${current.stretchy ? `<span class="tag stretchy">${r.word.length} letters</span>` : ''}</div>
+      <button type="button" class="copy" data-w="${r.word}">Copy</button>
+      <div class="meta">par ${r.par} · ${r.routes} shortest routes</div>
+      <div class="route">${r.route.join(' › ')}</div>
+    </li>`).join('');
+}
+
+$('sort').addEventListener('change', render);
+$('par-filter').addEventListener('change', render);
+$('clear-par').addEventListener('click', () => {
+  document.querySelectorAll('#par-filter input').forEach(i => { i.checked = false; });
+  render();
+});
+$('hide-routes').addEventListener('change', () => {
+  try { localStorage.setItem('gen-puz-hide-routes', $('hide-routes').checked ? 'on' : 'off'); } catch (e) { /* not remembered */ }
+  render();
+});
+try { $('hide-routes').checked = localStorage.getItem('gen-puz-hide-routes') === 'on'; } catch (e) { /* default: shown */ }
+
+$('results').addEventListener('click', e => {
+  const btn = e.target.closest('.copy');
+  if (!btn || !current) return;
+  const line = lineFor(btn.dataset.w);
+  copyText(line, `Copied ${line}`);
+});
+$('form').addEventListener('submit', run);
+$('date').addEventListener('change', updateDateNote);
+
+// ================= Batch =================
+let compareTouched = false;
+function syncCompare() {
+  if (!compareTouched && $('b-from').value) $('b-compare').value = addDays($('b-from').value, -REPEAT_DAYS);
+}
+$('b-compare').addEventListener('input', () => { compareTouched = true; });
+$('b-from').addEventListener('change', () => {
+  syncCompare();
+  if ($('b-to').value < $('b-from').value) $('b-to').value = addDays($('b-from').value, 6);
+});
+$('b-stretchy').addEventListener('change', () => { $('b-stretchy-when-wrap').hidden = !$('b-stretchy').checked; });
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+  return arr;
+}
+function weightedPick(items, weight) {
+  const ws = items.map(weight), total = ws.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < items.length; i++) if ((r -= ws[i]) < 0) return items[i];
+  return items[items.length - 1];
+}
+function lengthOrder(lengths) {
+  const pool = lengths.slice(), order = [];
+  while (pool.length) {
+    const n = weightedPick(pool, l => GEN_LENGTHS[l] || 1);
+    order.push(n);
+    pool.splice(pool.indexOf(n), 1);
+  }
+  return order;
+}
+
+// One fresh fair pair for a day, or null
+async function pickPair(stretchy, lengths, poolKind, uses, pairs, silly) {
+  const used = w => uses.get(w) || 0;
+  // stretchy: the silly word can be any length 3-7 (the partner is any other length)
+  const order = stretchy ? [LENGTHS.slice()] : lengthOrder(lengths).map(n => [n]);
+  for (const lens of order) {
+    const starts = shuffle([...silly].filter(w => lens.includes(w.length) && used(w) < MAX_WORD_USES));
+    // stretchy searches are slower, so try fewer start words
+    for (const s of starts.slice(0, stretchy ? 12 : 40)) {
+      const opts = (await fairPartners(s, poolKind, stretchy))
+        .filter(o => used(o.word) < MAX_WORD_USES && !pairs.has(pairKey(s, o.word)));
+      if (!opts.length) continue;
+      const o = weightedPick(opts, x => (PAR_WEIGHTS[x.par] || 1) * (x.silly ? SILLY_PAIR_WEIGHT : 1));
+      const [start, target] = Math.random() < 0.5 ? [s, o.word] : [o.word, s];
+      return { start, target, par: o.par, routes: o.routes, route: start === s ? o.route : o.route.slice().reverse(), stretchy };
+    }
+  }
+  return null;
+}
+
+let batch = [];
+
+async function runBatch(e) {
+  if (e) e.preventDefault();
+  const from = $('b-from').value, to = $('b-to').value, compare = $('b-compare').value;
+  const lengths = [...document.querySelectorAll('#b-lengths input:checked')].map(i => +i.value);
+  const poolKind = radio('bpool');
+  const stretchyOn = $('b-stretchy').checked, when = $('b-stretchy-when').value;
+  const keepXmas = $('b-keep').checked;
+  const warnings = [];
+  $('b-warnings').innerHTML = '';
+  $('b-out').hidden = true;
+  if (!from || !to || to < from) { $('b-status').textContent = 'Pick a From date on or before the To date.'; return; }
+  const days = daysBetween(from, to) + 1;
+  if (days > 366) { $('b-status').textContent = 'Pick at most a year at a time.'; return; }
+  if (!lengths.length && !(stretchyOn && when === 'all')) { $('b-status').textContent = 'Tick at least one length.'; return; }
+  if (from <= todayUK()) warnings.push(`${from} is live or past. Don't change today's or past puzzles.`);
+
+  $('b-go').disabled = true;
+  try {
+    const [rows, silly] = await Promise.all([puzzles(), sillyWords()]);
+    const byDate = Object.fromEntries(rows.map(r => [r.date, r]));
+    const kept = d => keepXmas && KEEP_DAYS.has(d.slice(5)) && byDate[d];
+    // Compare with: everything from the compare date, up to REPEAT_DAYS after the batch,
+    // except the days being regenerated (kept Christmas days still count)
+    const others = rows.filter(r => r.date >= compare && r.date <= addDays(to, REPEAT_DAYS)
+      && (r.date < from || r.date > to || kept(r.date)));
+    const { uses, pairs } = repeatsFrom(others);
+
+    batch = [];
+    for (let i = 0; i < days; i++) {
+      const date = addDays(from, i);
+      $('b-status').textContent = `Working… ${date} (${i + 1}/${days})`;
+      await yieldToUI();
+      if (kept(date)) { batch.push({ date, ...byDate[date], kept: true }); continue; }
+      const stretchy = stretchyOn && (when === 'all' || (when === 'sun' ? isSunday(date) : Math.random() < 1 / 7));
+      let pick = await pickPair(stretchy, lengths, poolKind, uses, pairs, silly);
+      if (!pick && stretchy && lengths.length) pick = await pickPair(false, lengths, poolKind, uses, pairs, silly);
+      if (!pick) { batch.push({ date, failed: true, current: byDate[date] }); continue; }
+      for (const w of [pick.start, pick.target]) uses.set(w, (uses.get(w) || 0) + 1);
+      pairs.add(pairKey(pick.start, pick.target));
+      batch.push({ date, ...pick, current: byDate[date] });
+    }
+
+    const failed = batch.filter(b => b.failed).length;
+    if (failed) warnings.push(`${failed} day${failed === 1 ? '' : 's'} had no fresh fair pair. Try Either, more lengths, or an earlier compare date.`);
+    $('b-warnings').innerHTML = warnings.map(m => `<p>${m}</p>`).join('');
+    const made = batch.filter(b => !b.failed && !b.kept).length;
+    const stretchyCount = batch.filter(b => b.stretchy).length;
+    $('b-status').textContent = `${made} new puzzle${made === 1 ? '' : 's'}${stretchyCount ? ` (${stretchyCount} stretchy)` : ''} for ${from} to ${to}. Paste the lines over those dates in puzzles.txt.`;
+    $('batch-text').value = batch.filter(b => !b.failed).map(b => `${b.date}|${b.start}|${b.target}`).join('\n');
+    $('b-list').innerHTML = batch.map(b => {
+      const was = b.current && !b.kept ? `<div class="meta">replaces ${b.current.start} → ${b.current.target}</div>` : '';
+      if (b.failed) return `<li><div><span class="w">${b.date}</span><span class="tag fail">no pair found</span></div>${was}</li>`;
+      return `<li>
+        <div><span class="meta">${b.date}</span> <span class="w">${b.start} → ${b.target}</span>${b.kept ? '<span class="tag kept">kept</span>' : ''}${b.stretchy ? '<span class="tag stretchy">stretchy</span>' : ''}</div>
+        <div class="meta">${b.kept ? 'Christmas day, left as scheduled' : `par ${b.par} · ${b.routes} shortest routes`}</div>
+        ${b.route ? `<div class="route">${b.route.join(' › ')}</div>` : ''}${was}
+      </li>`;
+    }).join('');
+    $('b-list').classList.toggle('hide-routes', $('hide-routes').checked);
+    $('b-out').hidden = false;
+  } catch (err) {
+    $('b-status').textContent = err.message;
+  } finally {
+    $('b-go').disabled = false;
+  }
+}
+
+$('batch-form').addEventListener('submit', runBatch);
+$('b-again').addEventListener('click', () => runBatch());
+$('b-copy').addEventListener('click', () => {
+  const lines = $('batch-text').value;
+  copyText(lines, `Copied ${lines.split('\n').filter(Boolean).length} lines`);
+});
+
+// ---------- Defaults ----------
+const tomorrow = addDays(todayUK(), 1);
+$('date').value = tomorrow;
+$('b-from').value = tomorrow;
+$('b-to').value = addDays(tomorrow, 6);
+syncCompare();
+updateDateNote();
+</script>
+</body>
+</html>

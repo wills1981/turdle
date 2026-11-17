@@ -12,6 +12,11 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
   these for Par and Give Up, falling back to the full list only if needed.
 - `tools/build_dictionaries.py`: regenerates both dictionary tiers from SCOWL. `tools/blocklist.txt` lists slurs removed from both.
 - `tools/puzzles.py`: checks and generates `puzzles.txt`. **It holds the fairness rules; keep this file in sync with it.**
+- `gen-puz/`: hidden puzzle helper (not linked; `noindex`). **One word**: list fair partners for a word (other word
+  silly, everyday or either; tick Stretchy for different-length partners) and copy a `DATE|START|END` line.
+  **Batch**: generate a date range, avoiding repeats of puzzles from a chosen date on (default 30 days back),
+  optionally with stretchy Sundays/random days; Christmas days are kept. Its JS mirrors the rules in
+  `tools/puzzles.py` (and `neighbours()` in `js/app.js`): keep them in sync.
 - `tools/silly_words.txt`: the pool of silly start/target words the generator draws from.
 - `tools/puzzles-3-letter.txt`: the 108 3-letter puzzles taken out of the schedule from 2026-11-17 (kept for reuse).
 - `alerts.txt` + `images/`: a notice pop-up (`#modal-notice`, `loadNotice()` in `js/app.js`) shown when the game opens.
@@ -31,6 +36,11 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
   A hint under the player says when sound is muted, when autoplay was blocked, or (while playing, since device volume
   can't be read) to turn the volume up. `navigator.audioSession.type = 'playback'` lets it play through the iPhone silent switch.
   Players can mute the autoplay from the stats window (🔊/🔇, saved as `turdle-sound`).
+- **Stretchy days**: any day whose start and target differ in length (detected automatically, no flag needed).
+  Each turn may change, add or remove one letter; every word stays 3–7 letters (`STRETCHY_LENGTHS`), and guesses
+  can be any length in that range. A rules banner (`#stretchy-rules`) shows all day, the badge reads `Stretchy 4➔6`,
+  tiles mark the letter changed/added each turn (`tile-changed`) instead of target matches, and the share grid
+  shows each row's length in ⬜ (🟩 for the target). `replace` never touches stretchy days.
 - Share text includes the 🟩/⬜ steps grid only if the player ticks "Include steps grid" in the stats window
   (off by default, as it hints at the route; saved as `turdle-share-grid`).
 - "See yesterday's answer" (stats window) shows yesterday's par route, plus the player's own ladder from
@@ -52,7 +62,7 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
 2026-11-11|FIB|NOB
 ```
 - One puzzle per day. Dates must be consecutive with no gaps or duplicates, in ascending order.
-- Words are UPPERCASE, the same length, 4–6 letters (3s only in the past schedule; 7s are allowed but none are fair). Lines starting with `#` are comments.
+- Words are UPPERCASE, 3–7 letters. Normally the same length, 4–6 letters; different lengths make a stretchy day (3s only in the past schedule; 7s are allowed but none are fair). Lines starting with `#` are comments.
 - A missing date falls back to a built-in schedule in `js/app.js`, so don't leave gaps.
 
 ### Theme
@@ -63,7 +73,8 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
 - Cheeky is fine; hateful is not. Never use anything in `tools/blocklist.txt` or any slur.
 - Mostly 4s and 5s, with a 6 now and then (`GEN_LENGTHS`). No new 3-letter puzzles. No 7s: with no shared
   positions they'd need par 7+, and no fair 7-letter pairs exist.
-- Start/target words only need to be in `dictionary-N.txt`; they don't need to be common.
+- Start/target words don't need to be common, or even in `dictionary-N.txt`: names are fine for fun, as the game
+  always accepts the day's own start and target. `check` flags non-dictionary words (to catch typos) but doesn't fail them.
 
 ### Fairness rules (puzzles must not be so hard that players give up)
 Enforced by `tools/puzzles.py check`; the constants live at the top of that file.
@@ -75,7 +86,10 @@ Enforced by `tools/puzzles.py check`; the constants live at the top of that file
 - **At least 2 distinct shortest routes**, so one wrong turn isn't fatal.
 - **Route words must be everyday words**: the par route goes only through `common-N.txt`.
   Words that only connect via obscure words (e.g. EGGS needs ERGS, BREATH is a near-island) are out.
-- **No repeats**: a start/target pair is used once, and each word appears at most twice in the file.
+- **No repeats** (within `REPEAT_DAYS` = 30 days): a pair isn't reused, and a word appears at most twice.
+  Older repeats are fine, as players will have forgotten. (The Python generator still avoids repeats file-wide.)
+- **Stretchy days** use the same par/route rules, with routes through everyday words of any length 3–7.
+  The no-shared-positions rule doesn't apply to them.
 - Aim for the middle: the generator weights par 4 and 5 over par 6.
 
 ### Workflow
@@ -83,7 +97,7 @@ Enforced by `tools/puzzles.py check`; the constants live at the top of that file
    ```bash
    python3 tools/puzzles.py generate --from 2027-01-01 --to 2027-03-31 --append
    ```
-   Or edit `puzzles.txt` by hand for themed days (e.g. Christmas).
+   Or edit `puzzles.txt` by hand for themed days (e.g. Christmas); `/gen-puz/` suggests fair partners for a chosen word, or generates a whole batch (incl. stretchy days).
    To swap out every future puzzle of some length (other days keep their words):
    `python3 tools/puzzles.py replace --from 2026-11-18 --lengths 4,5,6,7 --seed 18`
    `replace` never touches 25/26 Dec or 1 Jan (`KEEP_DAYS`), which are hand-picked Christmas puzzles.

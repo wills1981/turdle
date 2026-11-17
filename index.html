@@ -40,7 +40,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- Custom Stylesheet (theme) -->
-  <link rel="stylesheet" href="css/styles.css?v=6">
+  <link rel="stylesheet" href="css/styles.css?v=8">
 </head>
 <body class="app-shell flex flex-col antialiased">
 
@@ -97,6 +97,13 @@
         <div class="text-[11px] font-extrabold uppercase tracking-widest mb-1.5" style="color: var(--ink-soft)">Target</div>
         <div id="target-word-display" class="word-chip chip-target text-2xl sm:text-3xl">----</div>
       </div>
+    </div>
+
+    <!-- Stretchy days only: the rules stay on screen all day -->
+    <div id="stretchy-rules" class="stretchy-rules hidden" role="note">
+      <div><strong>🪗 Stretchy day!</strong> Each turn, one letter:</div>
+      <div class="stretchy-moves"><span>✏️ Change</span><span>➕ Add</span><span>➖ Remove</span></div>
+      <div class="stretchy-small">Words can be 3 to 7 letters long</div>
     </div>
 
     <!-- Toasts -->
@@ -313,7 +320,7 @@
   </div>
 
   <!-- Bump ?v= with each release so the page never runs against an older cached script -->
-  <script src="js/app.js?v=11"></script>
+  <script src="js/app.js?v=13"></script>
   <script data-goatcounter="https://turdle.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>
