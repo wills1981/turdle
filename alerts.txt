@@ -23,6 +23,19 @@
 
 ";
 
+2026-11-18: "
+<h2>Introducing.... STRETCHY PUZZLES!!!</h2>
+<p>S-t-r-e-t-c-h-y puzzles - the new awesome way to play Turdle!</p>
+<h3>How they work</h3>
+<ol>
+<li>Puzzles can start or end with any length word from 3 to 7 letters</li>
+<li>You can change, add or remove letters to form the next word</li>
+<li>like regular Turdle, get to the target in as few moves as possible!</li>
+</ol>
+<center><p><strong>HAPPY TURDLING!!!</strong></p></center>
+
+";
+
 #FRIDAY: "
 #<h2>Happy Friday</h2>
 #<p>Text</p>
