@@ -629,8 +629,8 @@ function changedIndex(prev, word) {
   return i < word.length ? i : -1;
 }
 
-// prev is given only on stretchy days: rows then mark the changed/added letter, since
-// letters shift position and "matches the target here" no longer means progress.
+// prev is given only on stretchy days: rows then also mark the changed/added letter, since
+// letters shift position and the target matches alone don't show how the ladder moved.
 function createRowElement(wordStr, type, target = gameState.targetWord, length = gameState.wordLength, prev) {
   const changed = prev === undefined ? -1 : changedIndex(prev, wordStr);
   const row = document.createElement('div');
@@ -644,12 +644,9 @@ function createRowElement(wordStr, type, target = gameState.targetWord, length =
     if (type === "target") {
       cls += " tile-target";
     } else if (type === "start" || type === "history") {
-      if (prev !== undefined) {
-        if (i === changed) cls += " tile-changed";
-      } else if (char && char === target[i]) {
-        // Highlight letters already matching the target in the same position (progress)
-        cls += " tile-match";
-      }
+      // Highlight letters already matching the target in the same position (progress)
+      if (char && char === target[i]) cls += " tile-match";
+      if (prev !== undefined && i === changed) cls += " tile-changed";
     } else if (type === "active") {
       if (char) cls += " tile-typed";
       else cls += i === wordStr.length ? " tile-empty tile-cursor" : " tile-empty";
@@ -1264,13 +1261,11 @@ function buildShareText() {
     lines.push(`Gave up after ${steps} step${steps === 1 ? '' : 's'} 💩`);
   }
   // Spoiler-free path: one row per word, 🟩 where the letter already matches the target.
-  // Stretchy days show the ladder's shape instead: ⬜ per letter, 🟩 for the target row.
+  // Stretchy days too: each row keeps its own word's length, matched by position.
   const target = gameState.targetWord;
   if (shareGridOn()) {
     for (const word of gameState.history) {
-      lines.push(gameState.stretchy
-        ? (word === target ? '🟩' : '⬜').repeat(word.length)
-        : [...word].map((c, i) => (c === target[i] ? '🟩' : '⬜')).join(''));
+      lines.push([...word].map((c, i) => (c === target[i] ? '🟩' : '⬜')).join(''));
     }
   }
   lines.push('', location.origin + location.pathname.replace(/[^/]*$/, '') + query); // drop any index.html

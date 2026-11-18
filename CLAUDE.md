@@ -39,8 +39,9 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
 - **Stretchy days**: any day whose start and target differ in length (detected automatically, no flag needed).
   Each turn may change, add or remove one letter; every word stays 3–7 letters (`STRETCHY_LENGTHS`), and guesses
   can be any length in that range. A rules banner (`#stretchy-rules`) shows all day, the badge reads `Stretchy 4➔6`,
-  tiles mark the letter changed/added each turn (`tile-changed`) instead of target matches, and the share grid
-  shows each row's length in ⬜ (🟩 for the target). `replace` never touches stretchy days.
+  tiles show target matches (`tile-match`) and also mark the letter changed/added each turn
+  (`tile-changed`; ringed teal when it's also a match), and the share grid
+  marks target matches by position like normal days, each row at its own length. `replace` never touches stretchy days.
 - Share text includes the 🟩/⬜ steps grid only if the player ticks "Include steps grid" in the stats window
   (off by default, as it hints at the route; saved as `turdle-share-grid`).
 - "See yesterday's answer" (stats window) shows yesterday's par route, plus the player's own ladder from

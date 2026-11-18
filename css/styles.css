@@ -81,6 +81,8 @@ body {
 .tile-match   { background: var(--teal); color: #fff; border-color: var(--teal-dark); }
 /* stretchy days: the letter changed or added this turn */
 .tile-changed { background: #e3f5f0; border-color: var(--teal); border-bottom-color: var(--teal-dark); color: var(--teal-dark); }
+/* ...and that letter also matches the target: teal fill with a ring */
+.tile-match.tile-changed { background: var(--teal); color: #fff; border-color: var(--teal-dark); outline: 3px solid var(--teal-dark); outline-offset: 2px; }
 .tile-target  { background: var(--green); color: #fff; border-color: var(--green-dark); }
 .tile-typed   { border-color: var(--teal); border-bottom-color: var(--teal-dark); }
 .tile-empty   { background: rgba(255,255,255,.5); border-style: dashed; border-bottom-width: 2px; border-color: #e2dbcf; color: transparent; }
