@@ -94,11 +94,7 @@ function setupEventListeners() {
   document.getElementById('btn-share').addEventListener('click', handleShare);
   document.getElementById('btn-share-whatsapp').addEventListener('click', handleShareWhatsApp);
   document.getElementById('btn-copy').addEventListener('click', handleCopy);
-  const shareGrid = document.getElementById('share-grid');
-  shareGrid.checked = shareGridOn();
-  shareGrid.addEventListener('change', () => {
-    try { localStorage.setItem(SHARE_GRID_KEY, shareGrid.checked ? 'on' : 'off'); } catch (e) { /* not remembered */ }
-  });
+  initShareOptions();
   document.getElementById('btn-yesterday').addEventListener('click', showYesterday);
   document.getElementById('btn-next-ready').addEventListener('click', () => location.reload());
   document.getElementById('btn-theme').addEventListener('click', showTheme);
@@ -1227,10 +1223,44 @@ function startCountdown() {
   countdownTimer = setInterval(tick, 1000);
 }
 
-// The 🟩/⬜ steps grid hints at which letters change, so it's opt-in (stats window checkbox)
+// Results in the share text are opt-in (stats window): the 🟩/⬜ grid hints at the route,
+// and the words give it away. turdle-share-grid: 'off' (or missing) / 'on' (= grid, as before) / 'words'.
+// turdle-share-style remembers the radio choice while the checkbox is off.
 const SHARE_GRID_KEY = 'turdle-share-grid';
-function shareGridOn() {
-  try { return localStorage.getItem(SHARE_GRID_KEY) === 'on'; } catch (e) { return false; }
+const SHARE_STYLE_KEY = 'turdle-share-style';
+function shareMode() {
+  let v = null;
+  try { v = localStorage.getItem(SHARE_GRID_KEY); } catch (e) { /* default off */ }
+  return v === 'on' ? 'grid' : v === 'words' ? 'words' : 'off';
+}
+function shareStyle() {
+  const mode = shareMode();
+  if (mode !== 'off') return mode;
+  try { return localStorage.getItem(SHARE_STYLE_KEY) === 'words' ? 'words' : 'grid'; } catch (e) { return 'grid'; }
+}
+
+function initShareOptions() {
+  const box = document.getElementById('share-results');
+  const group = document.getElementById('share-style');
+  const radios = [...document.querySelectorAll('input[name="share-style"]')];
+  const style = shareStyle();
+  box.checked = shareMode() !== 'off';
+  radios.forEach(r => { r.checked = r.value === style; });
+  const sync = () => {
+    group.classList.toggle('is-off', !box.checked);
+    radios.forEach(r => { r.disabled = !box.checked; });
+  };
+  const save = () => {
+    const chosen = (radios.find(r => r.checked) || radios[0]).value;
+    try {
+      localStorage.setItem(SHARE_STYLE_KEY, chosen);
+      localStorage.setItem(SHARE_GRID_KEY, !box.checked ? 'off' : chosen === 'words' ? 'words' : 'on');
+    } catch (e) { /* not remembered */ }
+    sync();
+  };
+  box.addEventListener('change', save);
+  radios.forEach(r => r.addEventListener('change', save));
+  sync();
 }
 
 function buildShareText() {
@@ -1260,12 +1290,16 @@ function buildShareText() {
   } else {
     lines.push(`Gave up after ${steps} step${steps === 1 ? '' : 's'} 💩`);
   }
-  // Spoiler-free path: one row per word, 🟩 where the letter already matches the target.
+  // One row per word, 🟩 where the letter already matches the target.
   // Stretchy days too: each row keeps its own word's length, matched by position.
+  // 'words' adds the word itself after its squares (a spoiler, so it's flagged).
   const target = gameState.targetWord;
-  if (shareGridOn()) {
+  const mode = shareMode();
+  if (mode !== 'off') {
+    if (mode === 'words') lines.push('⚠️ Spoiler: my route');
     for (const word of gameState.history) {
-      lines.push([...word].map((c, i) => (c === target[i] ? '🟩' : '⬜')).join(''));
+      const row = [...word].map((c, i) => (c === target[i] ? '🟩' : '⬜')).join('');
+      lines.push(mode === 'words' ? `${row} ${word}` : row);
     }
   }
   lines.push('', location.origin + location.pathname.replace(/[^/]*$/, '') + query); // drop any index.html

@@ -42,8 +42,10 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
   tiles show target matches (`tile-match`) and also mark the letter changed/added each turn
   (`tile-changed`; ringed teal when it's also a match), and the share grid
   marks target matches by position like normal days, each row at its own length. `replace` never touches stretchy days.
-- Share text includes the 🟩/⬜ steps grid only if the player ticks "Include steps grid" in the stats window
-  (off by default, as it hints at the route; saved as `turdle-share-grid`).
+- Share text includes results only if the player ticks "Include results in share" in the stats window
+  (off by default). Two radio choices: **Show grid** (🟩/⬜ rows, hints at the route) or **Show words** (the same rows
+  with each word, under a "⚠️ Spoiler" line). Saved as `turdle-share-grid` = `off` / `on` (grid) / `words`,
+  with the radio choice remembered in `turdle-share-style` (`shareMode()`, `initShareOptions()` in `js/app.js`).
 - "See yesterday's answer" (stats window) shows yesterday's par route, plus the player's own ladder from
   `turdle-past` (localStorage, last 7 daily games). Never reset `word_ladder_stats` or `turdle-progress`: they hold streaks.
 - Streaks are date-aware: `word_ladder_stats.lastDaily` is the last daily counted. A replay of the same date is not
