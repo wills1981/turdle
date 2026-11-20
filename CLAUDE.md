@@ -46,6 +46,7 @@ Run it locally with `docker compose up`, then open http://localhost:8080 (source
   (off by default). Two radio choices: **Show grid** (🟩/⬜ rows, hints at the route) or **Show words** (the same rows
   with each word, under a "⚠️ Spoiler" line). Saved as `turdle-share-grid` = `off` / `on` (grid) / `words`,
   with the radio choice remembered in `turdle-share-style` (`shareMode()`, `initShareOptions()` in `js/app.js`).
+- Give Up on a daily never shows the route (toast: "No spoilers! See the answer tomorrow"); free play still does.
 - "See yesterday's answer" (stats window) shows yesterday's par route, plus the player's own ladder from
   `turdle-past` (localStorage, last 7 daily games). Never reset `word_ladder_stats` or `turdle-progress`: they hold streaks.
 - Streaks are date-aware: `word_ladder_stats.lastDaily` is the last daily counted. A replay of the same date is not

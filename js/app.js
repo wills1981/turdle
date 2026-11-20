@@ -593,7 +593,10 @@ function handleGiveUpTap() {
 
 function handleGiveUp() {
   if (gameState.isGameOver) return;
-  if (gameState.optimalPaths.length > 0) {
+  // The daily answer stays secret until tomorrow ("See yesterday's answer"), so it can't be spoiled
+  if (gameState.mode === 'daily') {
+    showToast("No spoilers! See the answer tomorrow 💩", "pop");
+  } else if (gameState.optimalPaths.length > 0) {
     const path = gameState.optimalPaths[0].join(" ➔ ");
     showToast(`Solution: ${path}`, "pop");
   }
