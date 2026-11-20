@@ -36,7 +36,8 @@ let gameState = {
   commonWords: new Set(),  // everyday words: Par, hints, Give Up, free-play picks
   isGameOver: false,
   stretchy: false,         // start and target differ in length: each turn may also add or drop a letter
-  freeplayLength: 4
+  freeplayLength: 4,
+  puzzleDate: ''           // the daily puzzle's UK date (YYYY-MM-DD); never read it back from the badge text
 };
 
 let userStats = {
@@ -177,6 +178,7 @@ async function loadPuzzleMode(mode) {
 
   if (mode === 'daily') {
     const todayStr = puzzleDate();
+    gameState.puzzleDate = todayStr;
     let dailyPair = null;
 
     try {
@@ -470,8 +472,13 @@ function handleHint() {
 // left off. A finished or given-up puzzle stays finished, so refreshing can't retry it.
 const PROGRESS_KEY = 'turdle-progress';
 
+// The daily puzzle's date, or '' in free play. Saves, streaks, sharing and the archive all key on it.
+function currentPuzzleDate() {
+  return gameState.mode === 'daily' ? gameState.puzzleDate : '';
+}
+
 function puzzleId() {
-  const date = (document.getElementById('puzzle-date-badge').innerText.match(/\d{4}-\d{2}-\d{2}/) || [''])[0];
+  const date = currentPuzzleDate();
   return `${gameState.mode}|${date}|${gameState.startWord}|${gameState.targetWord}`;
 }
 
@@ -521,7 +528,12 @@ function restoreProgress() {
   archiveSavedProgress();
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem(PROGRESS_KEY)); } catch (e) { return; }
-  if (!saved || saved.id !== puzzleId() || !Array.isArray(saved.history) || saved.history[0] !== gameState.startWord) return;
+  if (!saved || !Array.isArray(saved.history) || saved.history[0] !== gameState.startWord) return;
+  // Saves made by v18 (2026-11-20) had no date in their id ('daily||START|TARGET'), because it was read
+  // from the badge text and the badge lost its date. Accept them for today's puzzle and repair them.
+  const legacyId = `${gameState.mode}||${gameState.startWord}|${gameState.targetWord}`;
+  const repaired = gameState.mode === 'daily' && saved.id === legacyId;
+  if (saved.id !== puzzleId() && !repaired) return;
   // Only trust saved words that are still valid one-letter steps
   const history = [saved.history[0]];
   for (const w of saved.history.slice(1)) {
@@ -536,6 +548,15 @@ function restoreProgress() {
   } else if (saved.result === 'gaveup') {
     gameState.result = 'gaveup';
     gameState.isGameOver = true;
+  }
+  if (repaired) {
+    saveProgress(); // rewrite with the dated id (and archive it for "yesterday's answer")
+    // v18 counted the finished game in the stats but couldn't record its date, so the streak
+    // would break at midnight. It was counted today, so record today.
+    if (gameState.isGameOver && userStats.lastDaily !== gameState.puzzleDate) {
+      userStats.lastDaily = gameState.puzzleDate;
+      saveStats();
+    }
   }
 }
 
@@ -1116,7 +1137,7 @@ function dismissNotice() {
 const LYRICS_SPOILER_DATE = '2026-11-13';
 
 function themeLyricsLocked() {
-  const date = (document.getElementById('puzzle-date-badge').innerText.match(/\d{4}-\d{2}-\d{2}/) || [''])[0];
+  const date = currentPuzzleDate();
   return gameState.mode === 'daily' && date === LYRICS_SPOILER_DATE && !gameState.result;
 }
 
@@ -1148,7 +1169,7 @@ function dayBefore(dateStr) {
 // turdle-progress), otherwise breaks the streak if the previous daily wasn't the day before.
 function countDaily() {
   if (gameState.mode !== 'daily') return true;
-  const date = (document.getElementById('puzzle-date-badge').innerText.match(/\d{4}-\d{2}-\d{2}/) || [''])[0];
+  const date = currentPuzzleDate();
   if (!date) return true;
   if (userStats.lastDaily === date) return false;
   if (userStats.lastDaily && userStats.lastDaily !== dayBefore(date)) userStats.streak = 0;
@@ -1206,7 +1227,7 @@ function startCountdown() {
   const box = document.getElementById('next-wrap');
   box.classList.toggle('hidden', gameState.mode !== 'daily');
   if (gameState.mode !== 'daily') return;
-  const shownDate = (document.getElementById('puzzle-date-badge').innerText.match(/\d{4}-\d{2}-\d{2}/) || [''])[0];
+  const shownDate = currentPuzzleDate();
   const tick = () => {
     const ms = msUntilUKMidnight();
     // Past midnight, or the app was left open overnight: today's puzzle is waiting
@@ -1269,7 +1290,7 @@ function buildShareText() {
   const par = gameState.parMoves;
   let label = 'Free Play', query = '';
   if (gameState.mode === 'daily') {
-    const date = (document.getElementById('puzzle-date-badge').innerText.match(/\d{4}-\d{2}-\d{2}/) || [''])[0];
+    const date = currentPuzzleDate();
     label = date ? `#${puzzleNumber(date)} ${date}` : '';
     // A new URL per puzzle makes WhatsApp etc. fetch a fresh link preview instead of a cached one.
     // The weekday page (e.g. s/thu.html) carries that day's preview image and redirects to the game;
