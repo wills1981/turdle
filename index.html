@@ -62,6 +62,7 @@
         </button>
         <button id="btn-install" class="btn-3d btn-yellow w-9 h-9 sm:w-10 sm:h-10 text-base hidden" title="Install app" aria-label="Install app">📲</button>
         <button id="btn-theme" class="btn-3d btn-yellow w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center" title="Turdle Theme" aria-label="Turdle Theme"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24"><path d="M15 19V3c2.5 1.2 5 2.8 5 6.5 0 1.3-.4 2.4-1 3.3.2-2.6-1.6-4.3-4-5" fill="#3b2a1e" stroke="#3b2a1e" stroke-width="1.6" stroke-linejoin="round"/><ellipse cx="9.5" cy="19.6" rx="6" ry="2.7" fill="#8b5a2b"/><ellipse cx="9.5" cy="16.7" rx="4.4" ry="2.2" fill="#9c6634"/><ellipse cx="9.5" cy="14.2" rx="2.8" ry="1.7" fill="#a8723c"/><path d="M8.6 12.9c.4-1.3 1.5-1.9 2.4-2.2-.2.9-.4 1.7-1.2 2.4z" fill="#a8723c"/><path d="M6 19.2c1.5.6 5.5.6 7 0M7.2 16.4c1 .5 3.6.5 4.6 0" stroke="#6b4220" stroke-width=".8" fill="none" stroke-linecap="round"/></svg></button>
+        <button id="btn-share-game" class="btn-3d btn-yellow w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center" title="Share Turdle" aria-label="Share Turdle"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24"><path d="M6 12.6 17.5 6.4M6 12.6l11.5 6.2" stroke="#3b2a1e" stroke-width="2.2" stroke-linecap="round"/><g id="share-dollop"><ellipse cx="6" cy="14" rx="4" ry="2.4" fill="#8b5a2b"/><ellipse cx="6" cy="12" rx="2.8" ry="1.8" fill="#9c6634"/><path d="M5.3 11c.3-1 1.1-1.5 1.8-1.7-.1.7-.3 1.3-.9 1.8z" fill="#a8723c"/><path d="M4 14.2c1 .4 3 .4 4 0" stroke="#6b4220" stroke-width=".7" fill="none" stroke-linecap="round"/></g><use href="#share-dollop" x="11.5" y="-6.6"/><use href="#share-dollop" x="11.5" y="6.6"/></svg></button>
         <button id="btn-stats" class="btn-3d btn-yellow w-9 h-9 sm:w-10 sm:h-10 text-base" title="Statistics" aria-label="Statistics">📊</button>
         <button id="btn-help" class="btn-3d btn-yellow w-9 h-9 sm:w-10 sm:h-10 text-base font-bold" title="How to play" aria-label="How to play">?</button>
         <button id="btn-settings" class="btn-3d btn-yellow w-9 h-9 sm:w-10 sm:h-10 text-base" title="Settings & Free Play" aria-label="Settings">⚙️</button>
@@ -224,6 +225,22 @@
     </div>
   </div>
 
+  <!-- MODAL: Share the game (header 📤): the game link, not a puzzle or results -->
+  <div id="modal-share-game" class="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="modal-card max-w-md w-full p-6 relative">
+      <button class="modal-close btn-3d btn-white absolute top-4 right-4 w-9 h-9 text-sm" aria-label="Close">✕</button>
+      <h3 class="font-display text-2xl font-bold mb-2 pr-10 flex items-center gap-2"><svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24"><path d="M6 12.6 17.5 6.4M6 12.6l11.5 6.2" stroke="#3b2a1e" stroke-width="2.2" stroke-linecap="round"/><use href="#share-dollop"/><use href="#share-dollop" x="11.5" y="-6.6"/><use href="#share-dollop" x="11.5" y="6.6"/></svg>Share Turdle</h3>
+      <p class="text-sm font-bold mb-4" style="color: var(--ink-soft)">Spread the silliness! Send your mates a link to the game.</p>
+      <div class="space-y-2">
+        <button id="btn-share-game-native" class="btn-3d btn-teal w-full h-12 text-base flex items-center justify-center gap-2"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24"><path d="M6 12.6 17.5 6.4M6 12.6l11.5 6.2" stroke="#3b2a1e" stroke-width="2.2" stroke-linecap="round"/><use href="#share-dollop"/><use href="#share-dollop" x="11.5" y="-6.6"/><use href="#share-dollop" x="11.5" y="6.6"/></svg>Share</button>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btn-share-game-whatsapp" class="btn-3d btn-whatsapp h-11 text-sm flex items-center justify-center gap-2"><span aria-hidden="true">💬</span>WhatsApp</button>
+          <button id="btn-share-game-copy" class="btn-3d btn-white h-11 text-sm flex items-center justify-center gap-2"><span aria-hidden="true">📋</span>Copy</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: Turdle Theme -->
   <div id="modal-theme" class="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="modal-card max-w-md w-full p-6 relative max-h-[90vh] flex flex-col">
@@ -326,7 +343,7 @@
   </div>
 
   <!-- Bump ?v= with each release so the page never runs against an older cached script -->
-  <script src="js/app.js?v=21"></script>
+  <script src="js/app.js?v=22"></script>
   <script data-goatcounter="https://turdle.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>

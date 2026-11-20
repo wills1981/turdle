@@ -109,6 +109,11 @@ function setupEventListeners() {
   updateSoundButton();
   // Native share sheet (WhatsApp, Messages, etc.) is mainly available on mobile
   if (!navigator.share) document.getElementById('btn-share').classList.add('hidden');
+  document.getElementById('btn-share-game').addEventListener('click', () => showModal('modal-share-game'));
+  document.getElementById('btn-share-game-native').addEventListener('click', handleShareGame);
+  document.getElementById('btn-share-game-whatsapp').addEventListener('click', handleShareGameWhatsApp);
+  document.getElementById('btn-share-game-copy').addEventListener('click', handleCopyGame);
+  if (!navigator.share) document.getElementById('btn-share-game-native').classList.add('hidden');
   
   document.getElementById('btn-generate-freeplay').addEventListener('click', handleGenerateFreeplay);
   document.getElementById('btn-start-custom').addEventListener('click', handleStartCustom);
@@ -1330,8 +1335,13 @@ function buildShareText() {
       lines.push(mode === 'words' ? `${row} ${word}` : row);
     }
   }
-  lines.push('', location.origin + location.pathname.replace(/[^/]*$/, '') + query); // drop any index.html
+  lines.push('', gameUrl() + query);
   return lines.join('\n');
+}
+
+// The game's base URL, dropping any index.html (or other page name).
+function gameUrl() {
+  return location.origin + location.pathname.replace(/[^/]*$/, '');
 }
 
 function canShare() {
@@ -1340,23 +1350,20 @@ function canShare() {
   return false;
 }
 
-async function handleShare() {
-  if (!canShare()) return;
+// The three ways to send text, shared by the stats window (results) and the header Share button (game link).
+async function shareNative(text, copyToast) {
   try {
-    await navigator.share({ text: buildShareText() });
+    await navigator.share({ text });
   } catch (e) {
-    if (e.name !== 'AbortError') handleCopy();
+    if (e.name !== 'AbortError') copyText(text, copyToast);
   }
 }
 
-function handleShareWhatsApp() {
-  if (!canShare()) return;
-  window.open(`https://wa.me/?text=${encodeURIComponent(buildShareText())}`, '_blank', 'noopener');
+function shareWhatsApp(text) {
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
 }
 
-async function handleCopy() {
-  if (!canShare()) return;
-  const text = buildShareText();
+async function copyText(text, toast) {
   try {
     await navigator.clipboard.writeText(text);
   } catch (e) {
@@ -1368,8 +1375,22 @@ async function handleCopy() {
     document.execCommand('copy');
     document.body.removeChild(textarea);
   }
-  showToast("Results copied to clipboard!", "pop");
+  showToast(toast, "pop");
 }
+
+const RESULTS_COPIED = "Results copied to clipboard!";
+function handleShare() { if (canShare()) shareNative(buildShareText(), RESULTS_COPIED); }
+function handleShareWhatsApp() { if (canShare()) shareWhatsApp(buildShareText()); }
+function handleCopy() { if (canShare()) copyText(buildShareText(), RESULTS_COPIED); }
+
+// Header Share button: the game itself (no puzzle, no results), shareable any time.
+const LINK_COPIED = "Link copied to clipboard!";
+function buildGameShareText() {
+  return `Turdle 💩 the unapologetically silly daily word-ladder puzzle. Can you beat par?\n\n${gameUrl()}`;
+}
+function handleShareGame() { shareNative(buildGameShareText(), LINK_COPIED); }
+function handleShareGameWhatsApp() { shareWhatsApp(buildGameShareText()); }
+function handleCopyGame() { copyText(buildGameShareText(), LINK_COPIED); }
 
 async function handleGenerateFreeplay() {
   hideModals();
