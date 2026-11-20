@@ -200,7 +200,8 @@ async function loadPuzzleMode(mode) {
     gameState.targetWord = dailyPair.target;
     gameState.wordLength = dailyPair.start.length;
     gameState.stretchy = dailyPair.start.length !== dailyPair.target.length;
-    document.getElementById('puzzle-date-badge').innerText = `Daily #${puzzleNumber(todayStr)} (${todayStr})`;
+    // document.getElementById('puzzle-date-badge').innerText = `Daily #${puzzleNumber(todayStr)} (${todayStr})`;
+    document.getElementById('puzzle-date-badge').innerText = `Puzzle #${puzzleNumber(todayStr)}`;
   }
 
   await loadDictionary(gameState.stretchy ? STRETCHY_LENGTHS : gameState.wordLength);
