@@ -1083,6 +1083,9 @@ function hideModals() {
   stopSound();
   document.querySelectorAll('[id^="modal-"]').forEach(m => m.classList.add('hidden'));
   document.getElementById('theme-audio').pause();
+  // The How to play video starts again from the beginning next time
+  const howto = document.getElementById('howto-video');
+  if (!howto.paused || howto.currentTime) { howto.pause(); howto.currentTime = 0; }
 }
 
 // --- Notice pop-up (alerts.txt) ------------------------------------------------

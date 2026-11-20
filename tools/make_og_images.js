@@ -1,4 +1,5 @@
-// Renders the weekday link-preview images (icons/og-<day>.png, plus icons/og-image.png = Monday)
+// Renders the app icons, favicon and header logo (from the cut-out images/turdle-man-beard.png),
+// the weekday link-preview images (icons/og-<day>.png, plus icons/og-image.png = Monday)
 // and writes the weekday share pages (s/<day>.html) that point crawlers at them.
 // The game's share link goes to the puzzle's weekday page, which redirects straight to the game.
 //
@@ -12,14 +13,32 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const SITE = 'https://wills1981.github.io/turdle/';
-const VERSION = 3; // bump to make crawlers refetch the images
+const VERSION = 4; // bump to make crawlers refetch the images
 const DAYS = [ // Monday first, as the user listed them
   ['mon', 'Monday', 'BUMS'], ['tue', 'Tuesday', 'TIT'], ['wed', 'Wednesday', 'FARTY'],
   ['thu', 'Thursday', 'GONAD'], ['fri', 'Friday', 'ARSE'], ['sat', 'Saturday', 'TWAT'], ['sun', 'Sunday', 'BALLS'],
 ];
 
+// The bearded poo, cut out with a transparent background (images/turdle-man-beard.png),
+// laid on the orange from the original artwork.
+const FACE = 'data:image/png;base64,' + fs.readFileSync(path.join(ROOT, 'images/turdle-man-beard.png')).toString('base64');
+const ORANGE_BG = 'radial-gradient(circle at 50% 42%, #ff9a3c 0%, #fb7a1e 55%, #ee5a0f 100%)';
+
+// A square icon: the character at `fill` of the width (smaller for maskable icons, which get cropped to a circle)
+function iconHtml(size, fill, radius = 0) {
+  return `<html><body style="margin:0;width:${size}px;height:${size}px;overflow:hidden">
+    <div style="width:${size}px;height:${size}px;background:${ORANGE_BG};border-radius:${radius}px;display:flex;align-items:center;justify-content:center">
+      <img src="${FACE}" style="width:${Math.round(size * fill)}px;height:auto;margin-top:${Math.round(size * 0.03)}px">
+    </div></body></html>`;
+}
+
+const ICONS = [ // [file, size, fill]
+  ['icons/icon-512.png', 512, 0.86], ['icons/icon-192.png', 192, 0.88], ['icons/apple-touch-icon.png', 180, 0.86],
+  ['icons/icon-maskable-512.png', 512, 0.66], ['icons/favicon-48.png', 48, 0.96], ['images/turdle-logo.png', 240, 0.86],
+];
+
 function imageHtml(word) {
-  const svg = fs.readFileSync(path.join(ROOT, 'icons/icon.svg'), 'utf8').replace('<svg ', '<svg width="300" height="300" ');
+  const svg = `<div style="width:300px;height:300px;background:${ORANGE_BG};display:flex;align-items:center;justify-content:center"><img src="${FACE}" style="width:262px;margin-top:8px"></div>`;
   const tiles = [...word].map(l => `<div class="t">${l}</div>`).join('');
   return `<html><head>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@800&display=swap" rel="stylesheet">
@@ -56,7 +75,7 @@ function sharePage(day, word) {
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Turdle! logo with letter tiles spelling ${word}">
+  <meta property="og:image:alt" content="Turdle! poo mascot with letter tiles spelling ${word}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:image" content="${img}">
   <meta http-equiv="refresh" content="0;url=../">
@@ -71,6 +90,13 @@ function sharePage(day, word) {
   const exe = process.env.CHROME || process.env.HOME +
     '/Library/Caches/ms-playwright/chromium-1228/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing';
   const browser = await chromium.launch({ executablePath: exe });
+  for (const [file, size, fill] of ICONS) {
+    const p = await browser.newPage({ viewport: { width: size, height: size } });
+    await p.setContent(iconHtml(size, fill));
+    await p.screenshot({ path: path.join(ROOT, file) });
+    await p.close();
+    console.log(file);
+  }
   const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
   for (const [day, , word] of DAYS) {
     await page.setContent(imageHtml(word));

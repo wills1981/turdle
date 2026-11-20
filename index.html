@@ -12,20 +12,20 @@
   <meta property="og:title" content="Turdle! - Daily Puzzle Game">
   <meta property="og:description" content="The unapologetically silly daily word-ladder puzzle game, conceived and created by Rob Wills with the help of AI. Accept no imitations!">
   <meta property="og:url" content="https://wills1981.github.io/turdle/">
-  <meta property="og:image" content="https://wills1981.github.io/turdle/icons/og-image.png?v=3">
+  <meta property="og:image" content="https://wills1981.github.io/turdle/icons/og-image.png?v=4">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Turdle! logo with letter tiles spelling BUMS">
+  <meta property="og:image:alt" content="Turdle! poo mascot with letter tiles spelling BUMS">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:image" content="https://wills1981.github.io/turdle/icons/og-image.png?v=3">
+  <meta name="twitter:image" content="https://wills1981.github.io/turdle/icons/og-image.png?v=4">
 
   <link rel="canonical" href="https://wills1981.github.io/turdle/">
 
   <!-- Installable app (Add to Home Screen) -->
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#fdf6ec">
-  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -50,7 +50,7 @@
   <header class="w-full shrink-0 safe-top">
     <!-- Grid: logo spans both rows; subtitle runs under title + buttons so it never squashes on phones -->
     <div class="max-w-xl mx-auto px-4 pt-4 grid items-center gap-x-3 gap-y-1" style="grid-template-columns: auto 1fr auto;">
-      <img class="row-span-2 w-20 h-20 rounded-2xl shadow-md" style="box-shadow: 0 4px 0 #9c3f14;" src="images/turdle-icon-m.jpg" alt="" srcset="">
+      <img class="row-span-2 w-20 h-20 rounded-2xl shadow-md" style="box-shadow: 0 4px 0 #9c3f14;" src="images/turdle-logo.png" alt="">
       <div class="flex items-center gap-2 min-w-0">
         <h1 class="font-display text-2xl sm:text-3xl font-bold leading-none whitespace-nowrap" style="color: var(--ink)">Turdle!</h1>
         <!-- <span class="pill font-display text-[11px] font-semibold px-2 py-0.5 hidden sm:inline">v2.0</span> -->
@@ -133,31 +133,15 @@
 
   <!-- MODAL: How To Play -->
   <div id="modal-help" class="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="modal-card max-w-md w-full p-6 relative">
+    <div class="modal-card max-w-md w-full p-6 relative max-h-[90vh] overflow-y-auto">
       <button class="modal-close btn-3d btn-white absolute top-4 right-4 w-9 h-9 text-sm" aria-label="Close">✕</button>
       <h3 class="font-display text-2xl font-bold mb-3">How to play</h3>
       <div class="text-sm space-y-3 leading-relaxed" style="color: var(--ink)">
-        <p>Turn the <strong>start word</strong> into the <strong>target word</strong> by changing <strong>exactly one letter</strong> at a time.</p>
-        <div class="stat-box p-3 space-y-2 font-display font-semibold">
-          <div class="flex items-center gap-2"><span class="word-chip chip-start text-sm">CATS</span><span>→</span><span class="word-chip chip-start text-sm">COTS</span></div>
-          <div class="flex items-center gap-2"><span class="word-chip chip-start text-sm">COTS</span><span>→</span><span class="word-chip chip-target text-sm">DOTS</span></div>
-        </div>
-        <h4 class="font-display text-2xl font-bold mb-3">Stretchy puzzles</h4>
-        <p><strong>Change</strong>, <strong>add</strong> or <strong>remove</strong> one letter at a time - min <strong>3</strong> max <strong>7</strong> letters.</p>
-        <div class="stat-box p-3 space-y-2 font-display font-semibold">
-
-          <div class="flex items-center gap-2"><span class="word-chip chip-start text-sm">CHUMP</span><span>→</span><span class="word-chip chip-start text-sm">HUMP</span></div>
-
-          <div class="flex items-center gap-2"><span class="word-chip chip-start text-sm">HUMP</span><span>→</span><span class="word-chip chip-start text-sm">BUMP</span></div>
-
-          <div class="flex items-center gap-2"><span class="word-chip chip-start text-sm">BUMP</span><span>→</span><span class="word-chip chip-start text-sm">BUM</span></div>
-
-          <div class="flex items-center gap-2"><span class="word-chip chip-start text-sm">BUM</span><span>→</span><span class="word-chip chip-start text-sm">BUN</span></div>
-
-          <div class="flex items-center gap-2"><span class="word-chip chip-start text-sm">BUN</span><span>→</span><span class="word-chip chip-start text-sm">NUN</span></div>
-
-        </div>
-
+        <!-- Made by tools/make_howto_video.js -->
+        <video id="howto-video" class="w-full aspect-square rounded-2xl bg-orange-500" src="videos/how-to-play.mp4"
+          poster="videos/how-to-play.jpg" controls playsinline preload="metadata"></video>
+        <p>Change <strong>one letter at a time</strong> to turn the <strong>start word</strong> into the <strong>target word</strong>.
+          On <strong>stretchy</strong> days you can also add or remove a letter (3–7 letters).</p>
         <ul class="list-disc list-inside space-y-1 text-xs" style="color: var(--ink-soft)">
           <li>Every step must be a real English word.</li>
           <li>Try to match par: the fewest steps possible.</li>
@@ -342,7 +326,7 @@
   </div>
 
   <!-- Bump ?v= with each release so the page never runs against an older cached script -->
-  <script src="js/app.js?v=20"></script>
+  <script src="js/app.js?v=21"></script>
   <script data-goatcounter="https://turdle.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 </body>
