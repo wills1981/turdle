@@ -36,6 +36,19 @@
 
 ";
 
+2026-11-20: "
+<center><img src="turdle-man-beard.png" width="90" alt="Turdle mascot"></center>
+<h2>Turdle has a new look!</h2>
+<p>Say hello to our bearded poo 💩</p>
+<p><strong>Saved Turdle to your home screen on an iPhone or iPad?</strong> Apple doesn't update app icons, so to get the new one:</p>
+<ol>
+<li>Press and hold the Turdle icon and choose <strong>Remove App</strong></li>
+<li>Open Turdle in Safari, tap <strong>Share</strong>, then <strong>Add to Home Screen</strong></li>
+</ol>
+<p>On Android the new icon should appear by itself within a day or so.</p>
+<center><p><strong>HAPPY TURDLING!!!</strong></p></center>
+";
+
 #FRIDAY: "
 #<h2>Happy Friday</h2>
 #<p>Text</p>

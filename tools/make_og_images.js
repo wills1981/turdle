@@ -33,8 +33,8 @@ function iconHtml(size, fill, radius = 0) {
 }
 
 const ICONS = [ // [file, size, fill]
-  ['icons/icon-512.png', 512, 0.86], ['icons/icon-192.png', 192, 0.88], ['icons/apple-touch-icon.png', 180, 0.86],
-  ['icons/icon-maskable-512.png', 512, 0.66], ['icons/favicon-48.png', 48, 0.96], ['images/turdle-logo.png', 240, 0.86],
+  ['icons/icon-512-v2.png', 512, 0.86], ['icons/icon-192-v2.png', 192, 0.88], ['icons/apple-touch-icon-v2.png', 180, 0.86],
+  ['icons/icon-maskable-512-v2.png', 512, 0.66], ['icons/favicon-48.png', 48, 0.96], ['images/turdle-logo.png', 240, 0.86],
 ];
 
 function imageHtml(word) {
